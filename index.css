@@ -1,0 +1,106 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f9f9f9;
+    overflow: hidden;
+}
+
+.button-container {
+    margin: 10px;
+}
+
+button {
+    margin-right: 10px;
+    padding: 5px 10px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* Das SVG füllt den restlichen Platz (unter den Buttons) */
+svg {
+    border: 1px solid #ccc;
+    background: #fff;
+    display: block;
+}
+
+.link {
+    stroke: #999;
+    stroke-width: 2px;
+    fill: none;
+}
+
+.linkText {
+    font-size: 12px;
+    fill: #000;
+    pointer-events: all;
+    stroke: none;
+    cursor: pointer;
+}
+
+.node {
+    cursor: pointer;
+}
+
+.node text {
+    pointer-events: none;
+    font-size: 14px;
+}
+
+/* Kontextmenü-Styles */
+#context-menu {
+    position: absolute;
+    display: none;
+    background: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    width: 220px;
+}
+
+#context-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 5px 0;
+}
+
+#context-menu li {
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+#context-menu li:hover {
+    background: #eee;
+}
+
+/* Modal-Styles */
+#modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
+    z-index: 2000;
+    padding: 20px;
+    width: 300px;
+}
+
+#modal-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+#modal-content {
+    margin-bottom: 10px;
+}
+
+#modal select,
+#modal input[type="text"] {
+    width: 100%;
+    padding: 5px;
+    font-size: 14px;
+    margin-bottom: 10px;
+}

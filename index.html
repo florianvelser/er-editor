@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Interaktives ER-Diagramm</title>
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <div class="button-container">
+    <button id="add-entity">Neue Entität hinzufügen</button>
+    <button id="download-json">Diagramm herunterladen (JSON)</button>
+    <button id="upload-json-btn">Diagramm laden (JSON)</button>
+    <input type="file" id="upload-json" style="display:none" accept=".json">
+  </div>
+  <svg></svg>
+  <!-- Kontextmenü (wird dynamisch befüllt) -->
+  <div id="context-menu"></div>
+  <!-- Modal für Texteingaben und Select-Menü -->
+  <div id="modal">
+    <div id="modal-title"></div>
+    <div id="modal-content"></div>
+    <div style="text-align: right;">
+      <button id="modal-ok">OK</button>
+      <button id="modal-cancel">Abbrechen</button>
+    </div>
+  </div>
+  <script src="index.js"></script>
+</body>
+</html>
