@@ -205,21 +205,21 @@ function updateGraph() {
 
 function ticked() {
     // Nodes are kept within the SVG limits (clamping)
-    nodes.forEach(function (n) {
-        let halfWidth = 0, halfHeight = 0;
-        if (n.type === "entity") {
-            halfWidth = (n.width || 120) / 2;
-            halfHeight = 30;
-        } else if (n.type === "attribute") {
-            halfWidth = (n.rx || 50);
-            halfHeight = 25;
-        } else if (n.type === "relationship") {
-            halfWidth = (n.width || 80) / 2;
-            halfHeight = (n.height || 40) / 2;
-        }
-        n.x = Math.max(halfWidth, Math.min(width - halfWidth, n.x));
-        n.y = Math.max(halfHeight, Math.min(height - halfHeight, n.y));
-    });
+    // nodes.forEach(function (n) {
+    //     let halfWidth = 0, halfHeight = 0;
+    //     if (n.type === "entity") {
+    //         halfWidth = (n.width || 120) / 2;
+    //         halfHeight = 30;
+    //     } else if (n.type === "attribute") {
+    //         halfWidth = (n.rx || 50);
+    //         halfHeight = 25;
+    //     } else if (n.type === "relationship") {
+    //         halfWidth = (n.width || 80) / 2;
+    //         halfHeight = (n.height || 40) / 2;
+    //     }
+    //     n.x = Math.max(halfWidth, Math.min(width - halfWidth, n.x));
+    //     n.y = Math.max(halfHeight, Math.min(height - halfHeight, n.y));
+    // });
     // Update links as paths
     link.attr("d", function (d) {
         let sx = d.source.x, sy = d.source.y, tx = d.target.x, ty = d.target.y;
@@ -320,11 +320,11 @@ function editText(event, d) {
 // Cardinality processing - only permissible values (1, n, m)
 function editCardinality(event, d) {
     event.stopPropagation();
-    showModal({ type: "text", title: "Kardinalität bearbeiten (nur 1, n, m)", defaultValue: d.cardinality }, function (newCard) {
+    showModal({ type: "text", title: "Edit cardinality (only 1, n, m)", defaultValue: d.cardinality }, function (newCard) {
         if (newCard !== null && newCard.trim() !== "") {
             newCard = newCard.trim();
             if (newCard !== "1" && newCard.toLowerCase() !== "n" && newCard.toLowerCase() !== "m") {
-                alert("Ungültiger Wert! Bitte nur 1, n oder m eingeben.");
+                alert("Invalid value! Please enter only 1, n or m.");
                 return;
             }
             d.cardinality = (newCard === "1") ? "1" : newCard.toLowerCase();
@@ -575,10 +575,10 @@ d3.select("#upload-json").on("change", function () {
                 });
                 updateGraph();
             } else {
-                alert("Ungültiges JSON-Format.");
+                alert("Invalid JSON format.");
             }
         } catch (err) {
-            alert("Fehler beim Parsen der JSON-Datei.");
+            alert("Error parsing the JSON file.");
         }
     };
     reader.readAsText(file);
