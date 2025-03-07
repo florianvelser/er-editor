@@ -7,6 +7,13 @@ const topOffset = document.querySelector(".button-container").offsetHeight + 20;
 let svg = d3.select("svg")
     .attr("width", window.innerWidth)
     .attr("height", window.innerHeight - topOffset);
+
+// Create a main group for pan and zoom
+const gMain = svg.append("g").attr("class", "gMain");
+// Separate groups for links (background) and nodes
+const gLinks = gMain.append("g").attr("class", "gLinks");
+const gNodes = gMain.append("g").attr("class", "gNodes");
+
 let width = +svg.attr("width"),
     height = +svg.attr("height");
 
@@ -20,42 +27,47 @@ window.addEventListener("resize", function () {
 });
 
 /***************************************
+ * Zoom and Pan functionality
+ ***************************************/
+const zoom = d3.zoom()
+    .scaleExtent([0.1, 10]) // Set minimum and maximum zoom levels
+    .on("zoom", (event) => {
+        gMain.attr("transform", event.transform);
+    });
+svg.call(zoom);
+
+/***************************************
  * Initial configuration (JSON)
  ***************************************/
 let config = {
     "nodes": [
-        {"id":"Entity_1741374044081","type":"entity","text":"Entity"},
-        {"id":"Entity_1741374049158","type":"entity","text":"Entity"},
-        {"id":"Relation_1741374062200","type":"relationship","text":"Relation"},
-        {"id":"Attribut_1741374067971","type":"attribute","text":"Attribute"},
-        {"id":"Attribut_1741374073140","type":"attribute","text":"Attribute"},
-        {"id":"Attribute_1741374083026","type":"attribute","text":"Attribute"},
-        {"id":"Attribute_1741374090093","type":"attribute","text":"Attribute"}
+        {"id": "Entity_1741374044081", "type": "entity", "text": "Entity"},
+        {"id": "Entity_1741374049158", "type": "entity", "text": "Entity"},
+        {"id": "Relation_1741374062200", "type": "relationship", "text": "Relation"},
+        {"id": "Attribut_1741374067971", "type": "attribute", "text": "Attribute"},
+        {"id": "Attribut_1741374073140", "type": "attribute", "text": "Attribute"},
+        {"id": "Attribute_1741374083026", "type": "attribute", "text": "Attribute"},
+        {"id": "Attribute_1741374090093", "type": "attribute", "text": "Attribute"}
     ],
-    "links":[
-        {"source":"Entity_1741374049158","target":"Relation_1741374062200","cardinality":"1"},
-        {"source":"Relation_1741374062200","target":"Entity_1741374044081","cardinality":"n"},
-        {"source":"Entity_1741374049158","target":"Attribut_1741374067971"},
-        {"source":"Entity_1741374049158","target":"Attribut_1741374073140"},
-        {"source":"Entity_1741374044081","target":"Attribute_1741374083026"},
-        {"source":"Entity_1741374044081","target":"Attribute_1741374090093"}
+    "links": [
+        {"source": "Entity_1741374049158", "target": "Relation_1741374062200", "cardinality": "1"},
+        {"source": "Relation_1741374062200", "target": "Entity_1741374044081", "cardinality": "n"},
+        {"source": "Entity_1741374049158", "target": "Attribut_1741374067971"},
+        {"source": "Entity_1741374049158", "target": "Attribut_1741374073140"},
+        {"source": "Entity_1741374044081", "target": "Attribute_1741374083026"},
+        {"source": "Entity_1741374044081", "target": "Attribute_1741374090093"}
     ]
 };
 
 let nodes = config.nodes.slice();
 let links = config.links.slice();
-let currentContextNode = null; // Node to which the context menu belongs
-
-// Separate groups: Links (in the background) and Nodes
-const gLinks = svg.append("g").attr("class", "gLinks");
-const gNodes = svg.append("g").attr("class", "gNodes");
-
+let currentContextNode = null; // Node for context menu
 
 /***************************************
  * Modal functionality
  ***************************************/
 function showModal(options, callback) {
-    // Options: type ('text' or 'select'), title, defaultValue, options (for select: array of {value,text})
+    // Options: type ('text' or 'select'), title, defaultValue, options (for select: array of {value, text})
     const modal = d3.select("#modal");
     d3.select("#modal-title").text(options.title || "");
     const content = d3.select("#modal-content");
@@ -94,6 +106,7 @@ const simulation = d3.forceSimulation(nodes)
     .force("link", d3.forceLink(links)
         .id(d => d.id)
         .distance(d => {
+            // Increase distance if a relationship node is involved
             if (d.source.type === "relationship" || d.target.type === "relationship") return 180;
             return 150;
         })
@@ -111,14 +124,14 @@ const simulation = d3.forceSimulation(nodes)
 let link, linkText, node;
 
 function updateGraph() {
-    // New nodes are assigned a default position (centre) if no position exists yet
+    // Assign default positions to new nodes if not set
     nodes.forEach(n => {
         if (typeof n.x !== "number" || typeof n.y !== "number") {
             n.x = width / 2;
             n.y = height / 2;
         }
     });
-    // Render links as paths - with interrupted centre section if cardinality is present
+    // Render links as paths – with a gap in the center if cardinality is present
     link = gLinks.selectAll(".link")
         .data(links, d => d.source.id + "-" + d.target.id);
     link.exit().remove();
@@ -204,27 +217,11 @@ function updateGraph() {
 }
 
 function ticked() {
-    // Nodes are kept within the SVG limits (clamping)
-    nodes.forEach(function (n) {
-        let halfWidth = 0, halfHeight = 0;
-        if (n.type === "entity") {
-            halfWidth = (n.width || 120) / 2;
-            halfHeight = 30;
-        } else if (n.type === "attribute") {
-            halfWidth = (n.rx || 50);
-            halfHeight = 25;
-        } else if (n.type === "relationship") {
-            halfWidth = (n.width || 80) / 2;
-            halfHeight = (n.height || 40) / 2;
-        }
-        n.x = Math.max(halfWidth, Math.min(width - halfWidth, n.x));
-        n.y = Math.max(halfHeight, Math.min(height - halfHeight, n.y));
-    });
-    // Update links as paths
+    // Update link paths
     link.attr("d", function (d) {
         let sx = d.source.x, sy = d.source.y, tx = d.target.x, ty = d.target.y;
         if (d.cardinality) {
-            // Centre point and direction
+            // Calculate gap for the cardinality label
             let mx = (sx + tx) / 2, my = (sy + ty) / 2;
             let dx = tx - sx, dy = ty - sy;
             let angle = Math.atan2(dy, dx);
@@ -238,15 +235,16 @@ function ticked() {
             return "M" + sx + "," + sy + " L" + tx + "," + ty;
         }
     });
+    // Update node positions
     node.attr("transform", d => `translate(${d.x},${d.y})`);
-    // Position cardinality labels in the centre
+    // Position cardinality labels at the center of links
     linkText
         .attr("x", d => (d.source.x + d.target.x) / 2)
         .attr("y", d => (d.source.y + d.target.y) / 2);
 }
 
 /***************************************
- * Size and font customisation
+ * Node size and font customization
  ***************************************/
 function adjustNodeSize(g, d) {
     console.log(g, d)
@@ -302,7 +300,7 @@ function dragended(event, d) {
     d.fx = null;
     d.fy = null;
 }
-// Text editing via modal
+// Edit node text via modal
 function editText(event, d) {
     event.stopPropagation();
     const currentG = d3.select(this);
@@ -317,7 +315,7 @@ function editText(event, d) {
         }
     });
 }
-// Cardinality processing - only permissible values (1, n, m)
+// Edit cardinality via modal – allowed values: 1, n, m
 function editCardinality(event, d) {
     event.stopPropagation();
     showModal({ type: "text", title: "Edit cardinality (only 1, n, m)", defaultValue: d.cardinality }, function (newCard) {
@@ -338,15 +336,15 @@ function editCardinality(event, d) {
         }
     });
 }
+
 /***************************************
- * Context menu (right-click) - dynamic depending on element type
+ * Context menu (right-click) – dynamic based on element type
  ***************************************/
 function showContextMenu(event, d) {
     event.preventDefault();
     currentContextNode = d;
     const menu = d3.select("#context-menu");
     menu.html("");
-    // Standard: Option to delete the element
     let menuHTML = '<ul>';
     menuHTML += '<li id="cm-delete">Delete Element</li>';
     if (d.type === "entity") {
@@ -363,17 +361,16 @@ function showContextMenu(event, d) {
         .style("top", event.pageY + "px")
         .style("display", "block");
 
-    // Delete (for all elements) - for entities, also remove associated attributes and relationships
+    // Delete element (and for entities, also remove related attributes and relationships)
     d3.select("#cm-delete").on("click", function () {
         if (currentContextNode.type === "entity") {
             let removeSet = new Set([currentContextNode.id]);
 
-            // Find dependent elements recursively
+            // Recursively find dependent elements
             const findDependencies = (id) => {
                 links.forEach(l => {
                     const src = l.source.id || l.source;
                     const tgt = l.target.id || l.target;
-
                     if (src === id) {
                         const node = nodes.find(n => n.id === tgt);
                         if (node && (node.type === "attribute" || node.type === "relationship")) {
@@ -413,7 +410,7 @@ function showContextMenu(event, d) {
             });
             config.links = config.links.filter(l => !removeSet.has(l.source) && !removeSet.has(l.target));
         } else {
-            // For attributes or relationships: Simple deletion
+            // For attributes or relationships: simple deletion
             nodes = nodes.filter(n => n.id !== currentContextNode.id);
             config.nodes = config.nodes.filter(n => n.id !== currentContextNode.id);
             links = links.filter(l => {
@@ -428,7 +425,7 @@ function showContextMenu(event, d) {
     });
     // Add new attribute (for entities)
     d3.select("#cm-add-attribute").on("click", function () {
-        showModal({ type: "text", title: "Neues Attribut hinzufügen", defaultValue: "" }, function (attrText) {
+        showModal({ type: "text", title: "Add new attribute", defaultValue: "" }, function (attrText) {
             if (attrText && attrText.trim() !== "") {
                 const newId = attrText + "_" + Date.now();
                 const newAttr = { id: newId, type: "attribute", text: attrText };
@@ -442,7 +439,7 @@ function showContextMenu(event, d) {
         });
         menu.style("display", "none");
     });
-    // Create new relationship (for entities) - Selection via select menu
+    // Create new relationship (for entities)
     d3.select("#cm-add-relationship").on("click", function () {
         showModal({ type: "text", title: "Name of the new relationship", defaultValue: "" }, function (relText) {
             if (relText && relText.trim() !== "") {
@@ -470,10 +467,8 @@ function showContextMenu(event, d) {
         menu.style("display", "none");
     });
     // Set as primary key (for attributes)
-    // In showContextMenu, when clicking on 'Set as primary key'
     d3.select("#cm-set-primary").on("click", function () {
         const attributeNode = currentContextNode;
-
         // Find the parent entity
         const parentEntity = nodes.find(n =>
             links.some(l =>
@@ -481,23 +476,21 @@ function showContextMenu(event, d) {
                 (l.target.id || l.target) === attributeNode.id
             )
         );
-
         if (parentEntity) {
-            // Reset all attributes of the entity
+            // Reset primary key status for all attributes of the entity
             nodes.forEach(n => {
                 if (n.type === "attribute" &&
                     links.some(l => (l.source.id || l.source) === parentEntity.id && (l.target.id || l.target) === n.id)) {
                     n.primary = n.id === attributeNode.id;
                 }
             });
-
             updateGraph();
         }
         menu.style("display", "none");
     });
     // Add new attribute to relationship (for relationships)
     d3.select("#cm-add-attribute-rel").on("click", function () {
-        showModal({ type: "text", title: "Neues Attribut für Beziehung hinzufügen", defaultValue: "" }, function (attrText) {
+        showModal({ type: "text", title: "Add new attribute for relationship", defaultValue: "" }, function (attrText) {
             if (attrText && attrText.trim() !== "") {
                 const newId = attrText + "_" + Date.now();
                 const newAttr = { id: newId, type: "attribute", text: attrText };
@@ -518,10 +511,10 @@ d3.select("body").on("click", function () {
 });
 
 /***************************************
- * Button actions: New entity, JSON export/import
+ * Button actions: Add new entity, JSON export/import, and reset view
  ***************************************/
 d3.select("#add-entity").on("click", function () {
-    showModal({ type: "text", title: "Name of the new relationship", defaultValue: "" }, function (entityName) {
+    showModal({ type: "text", title: "Name of the new entity", defaultValue: "" }, function (entityName) {
         if (entityName && entityName.trim() !== "") {
             const newId = entityName + "_" + Date.now();
             const newEntity = { id: newId, type: "entity", text: entityName, x: width / 2, y: height / 2 };
@@ -549,7 +542,7 @@ d3.select("#download-json").on("click", function () {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
     const dlAnchorElem = document.createElement('a');
     dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", "er_diagramm.json");
+    dlAnchorElem.setAttribute("download", "er_diagram.json");
     dlAnchorElem.click();
 });
 
@@ -585,7 +578,12 @@ d3.select("#upload-json").on("change", function () {
     this.value = "";
 });
 
+// Reset view button: reset zoom and pan to default
+d3.select("#reset-view").on("click", function () {
+    svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
+});
+
 /***************************************
- * Initial rendering
+ * Initial rendering of the graph
  ***************************************/
 updateGraph();
