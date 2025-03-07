@@ -320,11 +320,11 @@ function editText(event, d) {
 // Cardinality processing - only permissible values (1, n, m)
 function editCardinality(event, d) {
     event.stopPropagation();
-    showModal({ type: "text", title: "Kardinalität bearbeiten (nur 1, n, m)", defaultValue: d.cardinality }, function (newCard) {
+    showModal({ type: "text", title: "Edit cardinality (only 1, n, m)", defaultValue: d.cardinality }, function (newCard) {
         if (newCard !== null && newCard.trim() !== "") {
             newCard = newCard.trim();
             if (newCard !== "1" && newCard.toLowerCase() !== "n" && newCard.toLowerCase() !== "m") {
-                alert("Ungültiger Wert! Bitte nur 1, n oder m eingeben.");
+                alert("Invalid value! Please enter only 1, n or m.");
                 return;
             }
             d.cardinality = (newCard === "1") ? "1" : newCard.toLowerCase();
@@ -575,10 +575,10 @@ d3.select("#upload-json").on("change", function () {
                 });
                 updateGraph();
             } else {
-                alert("Ungültiges JSON-Format.");
+                alert("Invalid JSON format.");
             }
         } catch (err) {
-            alert("Fehler beim Parsen der JSON-Datei.");
+            alert("Error parsing the JSON file.");
         }
     };
     reader.readAsText(file);
