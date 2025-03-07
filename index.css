@@ -1,9 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
 body {
     font-family: sans-serif;
     margin: 0;
     padding: 0;
     background: #f9f9f9;
     overflow: hidden;
+    font-family: "Inter", sans-serif;
+    font-optical-sizing: auto;
+    font-style: normal;
 }
 
 .button-container {
@@ -17,7 +22,7 @@ button {
     cursor: pointer;
 }
 
-/* Das SVG füllt den restlichen Platz (unter den Buttons) */
+/* The SVG fills the remaining space (under the buttons) */
 svg {
     border: 1px solid #ccc;
     background: #fff;
@@ -36,6 +41,7 @@ svg {
     pointer-events: all;
     stroke: none;
     cursor: pointer;
+    transform: translate(-3px, 3px);
 }
 
 .node {
@@ -47,7 +53,7 @@ svg {
     font-size: 14px;
 }
 
-/* Kontextmenü-Styles */
+/* Context menu styles */
 #context-menu {
     position: absolute;
     display: none;

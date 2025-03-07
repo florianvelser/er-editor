@@ -1,7 +1,7 @@
 /***************************************
- * Dynamische SVG-Größe (volle Fensterbreite & -höhe abzüglich Buttonbereich)
+ * Dynamic SVG size (full window width & height minus button area)
  ***************************************/
-const STROKE_WIDTH = 1;
+const STROKE_WIDTH = 0;
 
 const topOffset = document.querySelector(".button-container").offsetHeight + 20;
 let svg = d3.select("svg")
@@ -20,45 +20,42 @@ window.addEventListener("resize", function () {
 });
 
 /***************************************
- * Initiale Konfiguration (JSON)
+ * Initial configuration (JSON)
  ***************************************/
 let config = {
     "nodes": [
-        { "id": "Entität_1741374044081", "type": "entity", "text": "Entität" },
-        { "id": "Entität_1741374049158", "type": "entity", "text": "Entität" },
-        { "id": "Beziehung_1741374062200", "type": "relationship", "text": "Beziehung"
-        },
-        { "id": "Attribut_1741374067971", "type": "attribute", "text": "Attribut" },
-        { "id": "Attribut_1741374073140", "type": "attribute", "text": "Attribut" },
-        { "id": "Attribut_1741374077721", "type": "attribute", "text": "Attribut" },
-        { "id": "Attribute_1741374083026", "type": "attribute", "text": "Attribut" },
-        { "id": "Attribute_1741374090093", "type": "attribute", "text": "Attribut" }
+        {"id":"Entity_1741374044081","type":"entity","text":"Entity"},
+        {"id":"Entity_1741374049158","type":"entity","text":"Entity"},
+        {"id":"Relation_1741374062200","type":"relationship","text":"Relation"},
+        {"id":"Attribut_1741374067971","type":"attribute","text":"Attribute"},
+        {"id":"Attribut_1741374073140","type":"attribute","text":"Attribute"},
+        {"id":"Attribute_1741374083026","type":"attribute","text":"Attribute"},
+        {"id":"Attribute_1741374090093","type":"attribute","text":"Attribute"}
     ],
-    "links": [
-        { "source": "Entität_1741374049158", "target": "Beziehung_1741374062200", "cardinality": "1" },
-        { "source": "Beziehung_1741374062200", "target": "Entität_1741374044081", "cardinality": "n" },
-        { "source": "Entität_1741374049158", "target": "Attribut_1741374067971" },
-        { "source": "Entität_1741374049158", "target": "Attribut_1741374073140" },
-        { "source": "Entität_1741374049158", "target": "Attribut_1741374077721" },
-        { "source": "Entität_1741374044081", "target": "Attribute_1741374083026" },
-        { "source": "Entität_1741374044081", "target": "Attribute_1741374090093" }
+    "links":[
+        {"source":"Entity_1741374049158","target":"Relation_1741374062200","cardinality":"1"},
+        {"source":"Relation_1741374062200","target":"Entity_1741374044081","cardinality":"n"},
+        {"source":"Entity_1741374049158","target":"Attribut_1741374067971"},
+        {"source":"Entity_1741374049158","target":"Attribut_1741374073140"},
+        {"source":"Entity_1741374044081","target":"Attribute_1741374083026"},
+        {"source":"Entity_1741374044081","target":"Attribute_1741374090093"}
     ]
 };
 
 let nodes = config.nodes.slice();
 let links = config.links.slice();
-let currentContextNode = null; // Knoten, zu dem das Kontextmenü gehört
+let currentContextNode = null; // Node to which the context menu belongs
 
-// Separate Gruppen: Links (im Hintergrund) und Nodes
+// Separate groups: Links (in the background) and Nodes
 const gLinks = svg.append("g").attr("class", "gLinks");
 const gNodes = svg.append("g").attr("class", "gNodes");
 
 
 /***************************************
- * Modal-Funktionalität
+ * Modal functionality
  ***************************************/
 function showModal(options, callback) {
-    // Optionen: type ("text" oder "select"), title, defaultValue, options (für select: Array von {value,text})
+    // Options: type ('text' or 'select'), title, defaultValue, options (for select: array of {value,text})
     const modal = d3.select("#modal");
     d3.select("#modal-title").text(options.title || "");
     const content = d3.select("#modal-content");
@@ -91,10 +88,16 @@ function showModal(options, callback) {
 }
 
 /***************************************
- * Force-Simulation und Rendering
+ * Force simulation and rendering
  ***************************************/
 const simulation = d3.forceSimulation(nodes)
-    .force("link", d3.forceLink(links).id(d => d.id).distance(150).strength(1.7))
+    .force("link", d3.forceLink(links)
+        .id(d => d.id)
+        .distance(d => {
+            if (d.source.type === "relationship" || d.target.type === "relationship") return 180;
+            return 150;
+        })
+    )
     .force("charge", d3.forceManyBody().strength(-400))
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force("collide", d3.forceCollide().radius(d => {
@@ -108,14 +111,14 @@ const simulation = d3.forceSimulation(nodes)
 let link, linkText, node;
 
 function updateGraph() {
-    // Neue Knoten erhalten, falls noch keine Position vorhanden ist, eine Standardposition (Mitte)
+    // New nodes are assigned a default position (centre) if no position exists yet
     nodes.forEach(n => {
         if (typeof n.x !== "number" || typeof n.y !== "number") {
             n.x = width / 2;
             n.y = height / 2;
         }
     });
-    // Links als Pfade rendern – mit unterbrochenem Mittelteil bei vorhandener Kardinalität
+    // Render links as paths - with interrupted centre section if cardinality is present
     link = gLinks.selectAll(".link")
         .data(links, d => d.source.id + "-" + d.target.id);
     link.exit().remove();
@@ -123,7 +126,7 @@ function updateGraph() {
         .attr("class", "link")
         .merge(link);
 
-    // Kardinalitäts-Labels
+    // Cardinality labels
     linkText = gLinks.selectAll(".linkText")
         .data(links.filter(l => l.cardinality), d => d.source.id + "-" + d.target.id);
     linkText.exit().remove();
@@ -201,7 +204,7 @@ function updateGraph() {
 }
 
 function ticked() {
-    // Knoten werden innerhalb der SVG-Grenzen gehalten (Clamping)
+    // Nodes are kept within the SVG limits (clamping)
     nodes.forEach(function (n) {
         let halfWidth = 0, halfHeight = 0;
         if (n.type === "entity") {
@@ -217,15 +220,15 @@ function ticked() {
         n.x = Math.max(halfWidth, Math.min(width - halfWidth, n.x));
         n.y = Math.max(halfHeight, Math.min(height - halfHeight, n.y));
     });
-    // Links als Pfade aktualisieren
+    // Update links as paths
     link.attr("d", function (d) {
         let sx = d.source.x, sy = d.source.y, tx = d.target.x, ty = d.target.y;
         if (d.cardinality) {
-            // Mittlerer Punkt und Richtung
+            // Centre point and direction
             let mx = (sx + tx) / 2, my = (sy + ty) / 2;
             let dx = tx - sx, dy = ty - sy;
             let angle = Math.atan2(dy, dx);
-            let gap = 30, gapHalf = gap / 2;
+            let gap = 20, gapHalf = gap / 2;
             let gx1 = mx - gapHalf * Math.cos(angle);
             let gy1 = my - gapHalf * Math.sin(angle);
             let gx2 = mx + gapHalf * Math.cos(angle);
@@ -236,16 +239,17 @@ function ticked() {
         }
     });
     node.attr("transform", d => `translate(${d.x},${d.y})`);
-    // Kardinalitäts-Labels mittig positionieren
+    // Position cardinality labels in the centre
     linkText
         .attr("x", d => (d.source.x + d.target.x) / 2)
         .attr("y", d => (d.source.y + d.target.y) / 2);
 }
 
 /***************************************
- * Größen- und Schriftanpassung
+ * Size and font customisation
  ***************************************/
 function adjustNodeSize(g, d) {
+    console.log(g, d)
     const textEl = g.select("text");
     if (textEl.empty()) return;
     let bbox = textEl.node().getBBox();
@@ -272,8 +276,8 @@ function adjustNodeSize(g, d) {
         g.select("ellipse").attr("rx", newRx);
         d.rx = newRx;
     } else if (d.type === "relationship") {
-        let newWidth = Math.max(80, bbox.width + padding);
-        let newHeight = 40;
+        let newWidth = Math.max(80, bbox.width + padding) * 1.4;
+        let newHeight = 80;
         const points = `0,${-newHeight / 2} ${newWidth / 2},0 0,${newHeight / 2} ${-newWidth / 2},0`;
         g.select("polygon").attr("points", points);
         d.width = newWidth;
@@ -282,7 +286,7 @@ function adjustNodeSize(g, d) {
 }
 
 /***************************************
- * Interaktive Funktionen (Drag, Bearbeiten)
+ * Interactive functions (drag, edit)
  ***************************************/
 function dragstarted(event, d) {
     if (!event.active) simulation.alphaTarget(0.3).restart();
@@ -298,11 +302,11 @@ function dragended(event, d) {
     d.fx = null;
     d.fy = null;
 }
-// Textbearbeitung über Modal
+// Text editing via modal
 function editText(event, d) {
     event.stopPropagation();
     const currentG = d3.select(this);
-    showModal({ type: "text", title: "Text bearbeiten", defaultValue: d.text }, function (newText) {
+    showModal({ type: "text", title: "Edit text", defaultValue: d.text }, function (newText) {
         if (newText !== null && newText.trim() !== "") {
             d.text = newText;
             currentG.select("text").text(newText);
@@ -313,7 +317,7 @@ function editText(event, d) {
         }
     });
 }
-// Kardinalitätsbearbeitung – nur zulässige Werte (1, n, m)
+// Cardinality processing - only permissible values (1, n, m)
 function editCardinality(event, d) {
     event.stopPropagation();
     showModal({ type: "text", title: "Kardinalität bearbeiten (nur 1, n, m)", defaultValue: d.cardinality }, function (newCard) {
@@ -335,23 +339,23 @@ function editCardinality(event, d) {
     });
 }
 /***************************************
- * Kontextmenü (rechtsklick) – dynamisch je nach Elementtyp
+ * Context menu (right-click) - dynamic depending on element type
  ***************************************/
 function showContextMenu(event, d) {
     event.preventDefault();
     currentContextNode = d;
     const menu = d3.select("#context-menu");
     menu.html("");
-    // Standard: Option zum Löschen des Elements
+    // Standard: Option to delete the element
     let menuHTML = '<ul>';
-    menuHTML += '<li id="cm-delete">Element löschen</li>';
+    menuHTML += '<li id="cm-delete">Delete Element</li>';
     if (d.type === "entity") {
-        menuHTML += '<li id="cm-add-attribute">Neues Attribut hinzufügen</li>';
-        menuHTML += '<li id="cm-add-relationship">Neue Beziehung erstellen</li>';
+        menuHTML += '<li id="cm-add-attribute">Add new attribute</li>';
+        menuHTML += '<li id="cm-add-relationship">Create new relationship</li>';
     } else if (d.type === "attribute") {
-        menuHTML += '<li id="cm-set-primary">Als Primärschlüssel festlegen</li>';
+        menuHTML += '<li id="cm-set-primary">Set as primary key</li>';
     } else if (d.type === "relationship") {
-        menuHTML += '<li id="cm-add-attribute-rel">Neues Attribut hinzufügen</li>';
+        menuHTML += '<li id="cm-add-attribute-rel">Add new attribute</li>';
     }
     menuHTML += '</ul>';
     menu.html(menuHTML);
@@ -359,12 +363,12 @@ function showContextMenu(event, d) {
         .style("top", event.pageY + "px")
         .style("display", "block");
 
-    // Löschen (für alle Elemente) – bei Entitäten zusätzlich zugehörige Attribute und Beziehungen entfernen
+    // Delete (for all elements) - for entities, also remove associated attributes and relationships
     d3.select("#cm-delete").on("click", function () {
         if (currentContextNode.type === "entity") {
             let removeSet = new Set([currentContextNode.id]);
 
-            // Rekursiv abhängige Elemente finden
+            // Find dependent elements recursively
             const findDependencies = (id) => {
                 links.forEach(l => {
                     const src = l.source.id || l.source;
@@ -409,7 +413,7 @@ function showContextMenu(event, d) {
             });
             config.links = config.links.filter(l => !removeSet.has(l.source) && !removeSet.has(l.target));
         } else {
-            // Für Attribute oder Beziehungen: Einfache Löschung
+            // For attributes or relationships: Simple deletion
             nodes = nodes.filter(n => n.id !== currentContextNode.id);
             config.nodes = config.nodes.filter(n => n.id !== currentContextNode.id);
             links = links.filter(l => {
@@ -422,7 +426,7 @@ function showContextMenu(event, d) {
         updateGraph();
         menu.style("display", "none");
     });
-    // Neues Attribut hinzufügen (für Entitäten)
+    // Add new attribute (for entities)
     d3.select("#cm-add-attribute").on("click", function () {
         showModal({ type: "text", title: "Neues Attribut hinzufügen", defaultValue: "" }, function (attrText) {
             if (attrText && attrText.trim() !== "") {
@@ -438,17 +442,17 @@ function showContextMenu(event, d) {
         });
         menu.style("display", "none");
     });
-    // Neue Beziehung erstellen (für Entitäten) – Auswahl über Select-Menü
+    // Create new relationship (for entities) - Selection via select menu
     d3.select("#cm-add-relationship").on("click", function () {
-        showModal({ type: "text", title: "Name der neuen Beziehung", defaultValue: "" }, function (relText) {
+        showModal({ type: "text", title: "Name of the new relationship", defaultValue: "" }, function (relText) {
             if (relText && relText.trim() !== "") {
                 const validEntities = nodes.filter(n => n.type === "entity" && n.id !== currentContextNode.id)
                     .map(n => ({ value: n.id, text: n.id }));
                 if (validEntities.length === 0) {
-                    alert("Keine andere Entität verfügbar.");
+                    alert("No other entity available.");
                     return;
                 }
-                showModal({ type: "select", title: "Ziel-Entität auswählen", options: validEntities }, function (targetEntity) {
+                showModal({ type: "select", title: "Select target entity", options: validEntities }, function (targetEntity) {
                     if (targetEntity) {
                         const newRelId = relText + "_" + Date.now();
                         const newRel = { id: newRelId, type: "relationship", text: relText };
@@ -465,12 +469,12 @@ function showContextMenu(event, d) {
         });
         menu.style("display", "none");
     });
-    // Als Primärschlüssel festlegen (für Attribute)
-    // In showContextMenu, beim Klick auf "Als Primärschlüssel festlegen"
+    // Set as primary key (for attributes)
+    // In showContextMenu, when clicking on 'Set as primary key'
     d3.select("#cm-set-primary").on("click", function () {
         const attributeNode = currentContextNode;
 
-        // Finde die übergeordnete Entität
+        // Find the parent entity
         const parentEntity = nodes.find(n =>
             links.some(l =>
                 (l.source.id || l.source) === n.id &&
@@ -479,7 +483,7 @@ function showContextMenu(event, d) {
         );
 
         if (parentEntity) {
-            // Setze alle Attribute der Entität zurück
+            // Reset all attributes of the entity
             nodes.forEach(n => {
                 if (n.type === "attribute" &&
                     links.some(l => (l.source.id || l.source) === parentEntity.id && (l.target.id || l.target) === n.id)) {
@@ -491,7 +495,7 @@ function showContextMenu(event, d) {
         }
         menu.style("display", "none");
     });
-    // Neues Attribut zu Beziehung hinzufügen (für Beziehungen)
+    // Add new attribute to relationship (for relationships)
     d3.select("#cm-add-attribute-rel").on("click", function () {
         showModal({ type: "text", title: "Neues Attribut für Beziehung hinzufügen", defaultValue: "" }, function (attrText) {
             if (attrText && attrText.trim() !== "") {
@@ -508,16 +512,16 @@ function showContextMenu(event, d) {
         menu.style("display", "none");
     });
 }
-// Kontextmenü ausblenden, wenn außerhalb geklickt wird
+// Hide context menu when clicking outside of it
 d3.select("body").on("click", function () {
     d3.select("#context-menu").style("display", "none");
 });
 
 /***************************************
- * Button-Aktionen: Neue Entität, JSON Export/Import
+ * Button actions: New entity, JSON export/import
  ***************************************/
 d3.select("#add-entity").on("click", function () {
-    showModal({ type: "text", title: "Name der neuen Entität", defaultValue: "" }, function (entityName) {
+    showModal({ type: "text", title: "Name of the new relationship", defaultValue: "" }, function (entityName) {
         if (entityName && entityName.trim() !== "") {
             const newId = entityName + "_" + Date.now();
             const newEntity = { id: newId, type: "entity", text: entityName, x: width / 2, y: height / 2 };
@@ -582,6 +586,6 @@ d3.select("#upload-json").on("change", function () {
 });
 
 /***************************************
- * Initiales Rendering
+ * Initial rendering
  ***************************************/
 updateGraph();
