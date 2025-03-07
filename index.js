@@ -205,21 +205,21 @@ function updateGraph() {
 
 function ticked() {
     // Nodes are kept within the SVG limits (clamping)
-    // nodes.forEach(function (n) {
-    //     let halfWidth = 0, halfHeight = 0;
-    //     if (n.type === "entity") {
-    //         halfWidth = (n.width || 120) / 2;
-    //         halfHeight = 30;
-    //     } else if (n.type === "attribute") {
-    //         halfWidth = (n.rx || 50);
-    //         halfHeight = 25;
-    //     } else if (n.type === "relationship") {
-    //         halfWidth = (n.width || 80) / 2;
-    //         halfHeight = (n.height || 40) / 2;
-    //     }
-    //     n.x = Math.max(halfWidth, Math.min(width - halfWidth, n.x));
-    //     n.y = Math.max(halfHeight, Math.min(height - halfHeight, n.y));
-    // });
+    nodes.forEach(function (n) {
+        let halfWidth = 0, halfHeight = 0;
+        if (n.type === "entity") {
+            halfWidth = (n.width || 120) / 2;
+            halfHeight = 30;
+        } else if (n.type === "attribute") {
+            halfWidth = (n.rx || 50);
+            halfHeight = 25;
+        } else if (n.type === "relationship") {
+            halfWidth = (n.width || 80) / 2;
+            halfHeight = (n.height || 40) / 2;
+        }
+        n.x = Math.max(halfWidth, Math.min(width - halfWidth, n.x));
+        n.y = Math.max(halfHeight, Math.min(height - halfHeight, n.y));
+    });
     // Update links as paths
     link.attr("d", function (d) {
         let sx = d.source.x, sy = d.source.y, tx = d.target.x, ty = d.target.y;
