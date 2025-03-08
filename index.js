@@ -1,4 +1,6 @@
 import d3SvgToPng from 'd3-svg-to-png';
+const icons = import.meta.glob('/icons/*.svg', { eager: true, query: '?url', import: 'default' });
+console.log(icons['/icons/plus.svg']);
 
 /***************************************
  * Dynamic SVG size (full window width & height minus button area)
@@ -348,14 +350,14 @@ function showContextMenu(event, d) {
     const menu = d3.select("#context-menu");
     menu.html("");
     let menuHTML = '<ul>';
-    menuHTML += '<li id="cm-delete">Delete Element</li>';
+    menuHTML += `<li id="cm-delete" style="background-image: url(&quot;${icons['/icons/trash.svg']}&quot;);">Delete Element</li>`;
     if (d.type === "entity") {
-        menuHTML += '<li id="cm-add-attribute">Add new attribute</li>';
-        menuHTML += '<li id="cm-add-relationship">Create new relationship</li>';
+        menuHTML += `<li id="cm-add-attribute" style="background-image: url(&quot;${icons['/icons/plus.svg']}&quot;);">Add new attribute</li>`;
+        menuHTML += `<li id="cm-add-relationship" style="background-image: url(&quot;${icons['/icons/link.svg']}&quot;);">Create new relationship</li>`;
     } else if (d.type === "attribute") {
-        menuHTML += '<li id="cm-set-primary">Set as primary key</li>';
+        menuHTML += `<li id="cm-set-primary" style="background-image: url(&quot;${icons['/icons/key.svg']}&quot;);">Set as primary key</li>`;
     } else if (d.type === "relationship") {
-        menuHTML += '<li id="cm-add-attribute-rel">Add new attribute</li>';
+        menuHTML += `<li id="cm-add-attribute-rel" style="background-image: url(&quot;${icons['/icons/plus.svg']}&quot;);">Add new attribute</li>`;
     }
     menuHTML += '</ul>';
     menu.html(menuHTML);
