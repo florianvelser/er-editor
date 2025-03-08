@@ -3,7 +3,8 @@
     "vite": "^6.2.1"
   },
   "dependencies": {
-    "d3-svg-to-png": "^0.3.2"
+    "d3-svg-to-png": "^0.3.2",
+    "express": "^4.21.2"
   },
   "scripts": {
     "dev": "vite",

@@ -1,0 +1,17 @@
+services:
+  erditor:
+    build: .
+    container_name: erditor
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.erditor.rule=Host(`erditor.florianvelser.de`)"
+      - "traefik.http.routers.erditor.entrypoints=websecure"
+      - "traefik.http.routers.erditor.tls=true"
+      - "traefik.http.services.erditor.loadbalancer.server.port=3000"
+    networks:
+      - webserver_webnet
+
+networks:
+  webserver_webnet:
+    external: true
