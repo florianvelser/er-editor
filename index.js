@@ -1,3 +1,5 @@
+import d3SvgToPng from 'd3-svg-to-png';
+
 /***************************************
  * Dynamic SVG size (full window width & height minus button area)
  ***************************************/
@@ -582,6 +584,77 @@ d3.select("#upload-json").on("change", function () {
 d3.select("#reset-view").on("click", function () {
     svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
 });
+
+
+/***************************************
+ * Export PNG functionality
+ ***************************************/
+document.getElementById('export-png').addEventListener('click', function () {
+    const bbox = getDiagramBBox();
+    const originalSvg = document.querySelector('svg');
+    const clonedSvg = originalSvg.cloneNode(true);
+
+    clonedSvg.setAttribute('width', bbox.width);
+    clonedSvg.setAttribute('height', bbox.height);
+
+    const gMain = clonedSvg.querySelector('.gMain');
+    if (gMain) {
+        gMain.style.transform = `translate(${bbox.minX * -1}px, ${bbox.minY * -1}px)`;
+    }
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    const watermark = document.createElementNS(svgNS, "text");
+    watermark.textContent = "Created with ermodell";
+    watermark.setAttribute("x", "5"); 
+    watermark.setAttribute("y", bbox.height - 5);
+    watermark.setAttribute("dominant-baseline", "text-after-edge");
+    watermark.style.fontSize = "10px";
+    watermark.setAttribute("fill", "rgba(0,0,0,0.5)");
+
+    clonedSvg.appendChild(watermark);
+
+    clonedSvg.setAttribute('id', 'clonedSvg');
+    document.body.appendChild(clonedSvg);
+
+    d3SvgToPng('#clonedSvg', 'name', {
+        scale: 3,
+        format: 'png',
+        quality: 1,
+        download: true,
+        ignore: '.ignored',
+        background: 'white'
+    });
+
+    document.getElementById('clonedSvg').remove();
+});
+
+function getDiagramBBox() {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodes.forEach(n => {
+        let halfWidth = 0, halfHeight = 0;
+        if (n.type === "entity") {
+            halfWidth = (n.width || 120) / 2;
+            halfHeight = 30;
+        } else if (n.type === "attribute") {
+            halfWidth = (n.rx || 50);
+            halfHeight = 25;
+        } else if (n.type === "relationship") {
+            halfWidth = (n.width || 80) / 2;
+            halfHeight = (n.height || 40) / 2;
+        }
+        minX = Math.min(minX, n.x - halfWidth);
+        minY = Math.min(minY, n.y - halfHeight);
+        maxX = Math.max(maxX, n.x + halfWidth);
+        maxY = Math.max(maxY, n.y + halfHeight);
+    });
+    const padding = 20;
+    return {
+        minX: minX - padding,
+        minY: minY - padding,
+        width: (maxX - minX) + 2 * padding,
+        height: (maxY - minY) + 2 * padding
+    };
+}
 
 /***************************************
  * Initial rendering of the graph
