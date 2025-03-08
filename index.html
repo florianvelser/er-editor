@@ -10,13 +10,31 @@
 </head>
 
 <body>
-    <div class="button-container">
-        <button id="add-entity">Add new Entity</button>
-        <button id="download-json">Download Diagram (JSON)</button>
-        <button id="upload-json-btn">Open Diagram (JSON)</button>
-        <button id="reset-view">Reset view</button>
-        <button id="export-png">Export PNG</button>
+    <div class="menu-bar">
         <input type="file" id="upload-json" style="display:none" accept=".json">
+        <div class="menu-item">File
+            <div class="dropdown">
+                <a id="diagram-new">New Blank</a>
+                <a id="upload-json-btn">Open</a>
+                <a id="download-json">Save</a>
+            </div>
+        </div>
+        <div class="menu-item">Edit
+            <div class="dropdown">
+                <a id="add-entity">Add new Entity</a>
+            </div>
+        </div>
+        <div class="menu-item">View
+            <div class="dropdown">
+                <a id="reset-view">Reset View</a>
+            </div>
+        </div>
+        <div class="menu-item">Export
+            <div class="dropdown">
+                <a id="export-png">Export PNG</a>
+                <a id="export-webp">Export WEBP</a>
+            </div>
+        </div>
     </div>
     <svg></svg>
     <!-- Context menu (is filled dynamically) -->

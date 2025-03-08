@@ -58,7 +58,6 @@ svg {
     position: absolute;
     display: none;
     background: #fff;
-    border: 1px solid #ccc;
     box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
     z-index: 1000;
     width: 220px;
@@ -113,4 +112,40 @@ svg {
 
 #clonedSvg {
     z-index: -1000;
+}
+
+/* Menu Bar */
+.menu-bar {
+    background-color: #333;
+    display: flex;
+}
+.menu-item {
+    position: relative;
+    padding: 8px 16px;
+    color: white;
+    cursor: pointer;
+}
+.menu-item:hover {
+    background-color: #555;
+}
+.dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: white;
+    min-width: 160px;
+    box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
+}
+.dropdown a {
+    color: black;
+    padding: 10px;
+    display: block;
+    text-decoration: none;
+}
+.dropdown a:hover {
+    background-color: #ddd;
+}
+.menu-item:hover .dropdown {
+    display: block;
 }

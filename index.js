@@ -5,7 +5,7 @@ import d3SvgToPng from 'd3-svg-to-png';
  ***************************************/
 const STROKE_WIDTH = 0;
 
-const topOffset = document.querySelector(".button-container").offsetHeight + 20;
+const topOffset = document.querySelector(".menu-bar").offsetHeight;
 let svg = d3.select("svg")
     .attr("width", window.innerWidth)
     .attr("height", window.innerHeight - topOffset);
@@ -551,6 +551,17 @@ d3.select("#download-json").on("click", function () {
 d3.select("#upload-json-btn").on("click", function () {
     document.getElementById("upload-json").click();
 });
+
+d3.select("#diagram-new").on("click", function () {
+    config = {
+        "nodes": [],
+        "links": []
+      };
+    nodes = config.nodes.slice();
+    links = config.links.slice();
+    updateGraph();
+});
+
 d3.select("#upload-json").on("change", function () {
     const file = this.files[0];
     if (!file) return;
@@ -589,7 +600,7 @@ d3.select("#reset-view").on("click", function () {
 /***************************************
  * Export PNG functionality
  ***************************************/
-document.getElementById('export-png').addEventListener('click', function () {
+function exportImage(format, quality) {
     const bbox = getDiagramBBox();
     const originalSvg = document.querySelector('svg');
     const clonedSvg = originalSvg.cloneNode(true);
@@ -618,14 +629,22 @@ document.getElementById('export-png').addEventListener('click', function () {
 
     d3SvgToPng('#clonedSvg', 'name', {
         scale: 3,
-        format: 'png',
-        quality: 1,
+        format: format,
+        quality: quality,
         download: true,
         ignore: '.ignored',
         background: 'white'
     });
 
     document.getElementById('clonedSvg').remove();
+}
+
+d3.select("#export-png").on("click", function () {
+    exportImage('png', 1);
+});
+
+d3.select("#export-webp").on("click", function () {
+    exportImage('webp', 1);
 });
 
 function getDiagramBBox() {
