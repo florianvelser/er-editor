@@ -41,6 +41,7 @@ svg {
     border: 1px solid #ccc;
     background: #fff;
     display: block;
+    cursor: grab;
 }
 
 .link {

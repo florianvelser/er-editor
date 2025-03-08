@@ -6,6 +6,7 @@ console.log(icons['/icons/plus.svg']);
  * Dynamic SVG size (full window width & height minus button area)
  ***************************************/
 const STROKE_WIDTH = 0;
+const menu = d3.select("#context-menu");
 
 const topOffset = document.querySelector(".menu-bar").offsetHeight;
 let svg = d3.select("svg")
@@ -34,11 +35,23 @@ window.addEventListener("resize", function () {
  * Zoom and Pan functionality
  ***************************************/
 const zoom = d3.zoom()
-    .scaleExtent([0.1, 10]) // Set minimum and maximum zoom levels
+    .scaleExtent([0.1, 10])
+    .on("start", (event) => {
+        if (event.sourceEvent && event.sourceEvent.type === "mousedown") {
+            svg.style("cursor", "grabbing");
+        }
+    })
     .on("zoom", (event) => {
+        menu.style("display", "none");
         gMain.attr("transform", event.transform);
+    })
+    .on("end", () => {
+        svg.style("cursor", "grab");
     });
+
 svg.call(zoom);
+
+
 
 /***************************************
  * Initial configuration (JSON)
@@ -359,7 +372,6 @@ function editCardinality(event, d) {
 function showContextMenu(event, d) {
     event.preventDefault();
     currentContextNode = d;
-    const menu = d3.select("#context-menu");
     menu.html("");
     let menuHTML = '<ul>';
     menuHTML += `<li id="cm-delete" style="background-image: url(&quot;${icons['/icons/trash.svg']}&quot;);">Delete Element</li>`;
@@ -460,12 +472,11 @@ function showContextMenu(event, d) {
         showModal({ type: "text", title: "Name of the new relationship", defaultValue: "" }, function (relText) {
             if (relText && relText.trim() !== "") {
                 const validEntities = nodes.filter(n => n.type === "entity" && n.id !== currentContextNode.id)
-                    .map(n => ({ value: n.id, text: n.id }));
+                    .map(n => ({ value: n.id, text: n.id.substring(0, n.id.lastIndexOf('_')) }));
                 if (validEntities.length === 0) {
                     alert("No other entity available.");
                     return;
                 }
-                console.log(validEntities)
                 showModal({ type: "select", title: "Select target entity", options: validEntities }, function (targetEntity) {
                     if (targetEntity) {
                         const newRelId = relText + "_" + Date.now();
@@ -689,6 +700,7 @@ function getDiagramBBox() {
         height: (maxY - minY) + 2 * padding
     };
 }
+
 
 /***************************************
  * Initial rendering of the graph
