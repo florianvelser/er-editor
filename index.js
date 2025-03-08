@@ -215,6 +215,10 @@ function updateGraph() {
     });
     node = nodeEnter.merge(node);
 
+    node.filter(d => d.type === "attribute")
+    .select("text")
+    .style("text-decoration", d => d.primary ? "underline" : "none");
+
     simulation.nodes(nodes);
     simulation.force("link").links(links);
     simulation.alpha(1).restart();
