@@ -1,7 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+}
+
 body {
-    font-family: sans-serif;
     margin: 0;
     padding: 0;
     background: #f9f9f9;
@@ -11,15 +16,24 @@ body {
     font-style: normal;
 }
 
-.button-container {
-    margin: 10px;
+button {
+    appearance: none;
+    border: none;
+    padding: 8px 12px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 3px;
+    flex: 1;
+    font-family: "Inter", sans-serif;
 }
 
-button {
-    margin-right: 10px;
-    padding: 5px 10px;
-    font-size: 14px;
-    cursor: pointer;
+button:first-child {
+    background-color: hsl(147, 50%, 50%);
+    color: #fff;
+}
+
+button:first-child:hover {
+    background-color: hsl(147, 50%, 46%);
 }
 
 /* The SVG fills the remaining space (under the buttons) */
@@ -27,6 +41,7 @@ svg {
     border: 1px solid #ccc;
     background: #fff;
     display: block;
+    cursor: grab;
 }
 
 .link {
@@ -96,28 +111,58 @@ svg {
     left: 50%;
     transform: translate(-50%, -50%);
     background: #fff;
-    border: 1px solid #ccc;
     box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
     z-index: 2000;
     padding: 20px;
     width: 300px;
+    border-radius: 5px;
 }
+
+#modal div:has(button) {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    gap: 12px;
+}
+
+.background {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: none;
+}
+
+body:has(#modal[style*="display: block"]) .background {
+    display: block;
+}
+
 
 #modal-title {
     font-weight: bold;
-    margin-bottom: 10px;
+    margin-bottom: 16px;
+    font-size: 18px;
 }
 
 #modal-content {
-    margin-bottom: 10px;
+    margin-bottom: 16px;
 }
 
 #modal select,
 #modal input[type="text"] {
+    appearance: none;
+    border: 2px solid #ccc;
+    outline: none;
     width: 100%;
-    padding: 5px;
-    font-size: 14px;
+    padding: 8px 12px;
+    font-size: 16px;
     margin-bottom: 10px;
+    border-radius: 3px;
+    font-family: "Inter", sans-serif;
 }
 
 #clonedSvg {

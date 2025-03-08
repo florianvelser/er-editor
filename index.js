@@ -6,6 +6,7 @@ console.log(icons['/icons/plus.svg']);
  * Dynamic SVG size (full window width & height minus button area)
  ***************************************/
 const STROKE_WIDTH = 0;
+const menu = d3.select("#context-menu");
 
 const topOffset = document.querySelector(".menu-bar").offsetHeight;
 let svg = d3.select("svg")
@@ -34,11 +35,23 @@ window.addEventListener("resize", function () {
  * Zoom and Pan functionality
  ***************************************/
 const zoom = d3.zoom()
-    .scaleExtent([0.1, 10]) // Set minimum and maximum zoom levels
+    .scaleExtent([0.1, 10])
+    .on("start", (event) => {
+        if (event.sourceEvent && event.sourceEvent.type === "mousedown") {
+            svg.style("cursor", "grabbing");
+        }
+    })
     .on("zoom", (event) => {
+        menu.style("display", "none");
         gMain.attr("transform", event.transform);
+    })
+    .on("end", () => {
+        svg.style("cursor", "grab");
     });
+
 svg.call(zoom);
+
+
 
 /***************************************
  * Initial configuration (JSON)
@@ -76,6 +89,7 @@ function showModal(options, callback) {
     d3.select("#modal-title").text(options.title || "");
     const content = d3.select("#modal-content");
     content.html("");
+    
     if (options.type === "text") {
         content.append("input")
             .attr("type", "text")
@@ -84,19 +98,26 @@ function showModal(options, callback) {
     } else if (options.type === "select") {
         const sel = content.append("select")
             .attr("id", "modal-select");
+        
         sel.selectAll("option")
             .data(options.options)
             .enter()
             .append("option")
             .attr("value", d => d.value)
-            .text(d => d.text);
+            .text(d => d.text)
+            .property("selected", d => d.value === options.defaultValue);
     }
+    
     modal.style("display", "block");
+    
     d3.select("#modal-ok").on("click", function () {
-        let value = options.type === "text" ? d3.select("#modal-input").property("value") : d3.select("#modal-select").property("value");
+        let value = options.type === "text" 
+            ? d3.select("#modal-input").property("value") 
+            : d3.select("#modal-select").property("value");
         modal.style("display", "none");
         callback(value);
     });
+    
     d3.select("#modal-cancel").on("click", function () {
         modal.style("display", "none");
         callback(null);
@@ -326,7 +347,7 @@ function editText(event, d) {
 // Edit cardinality via modal – allowed values: 1, n, m
 function editCardinality(event, d) {
     event.stopPropagation();
-    showModal({ type: "text", title: "Edit cardinality (only 1, n, m)", defaultValue: d.cardinality }, function (newCard) {
+    showModal({ type: "select", title: "Edit cardinality", options: [{value: '1', text: '1'}, {value: 'n', text: 'n'}, {value: 'm', text: 'm'}], defaultValue: d.cardinality }, function (newCard) {
         if (newCard !== null && newCard.trim() !== "") {
             newCard = newCard.trim();
             if (newCard !== "1" && newCard.toLowerCase() !== "n" && newCard.toLowerCase() !== "m") {
@@ -351,7 +372,6 @@ function editCardinality(event, d) {
 function showContextMenu(event, d) {
     event.preventDefault();
     currentContextNode = d;
-    const menu = d3.select("#context-menu");
     menu.html("");
     let menuHTML = '<ul>';
     menuHTML += `<li id="cm-delete" style="background-image: url(&quot;${icons['/icons/trash.svg']}&quot;);">Delete Element</li>`;
@@ -452,7 +472,7 @@ function showContextMenu(event, d) {
         showModal({ type: "text", title: "Name of the new relationship", defaultValue: "" }, function (relText) {
             if (relText && relText.trim() !== "") {
                 const validEntities = nodes.filter(n => n.type === "entity" && n.id !== currentContextNode.id)
-                    .map(n => ({ value: n.id, text: n.id }));
+                    .map(n => ({ value: n.id, text: n.id.substring(0, n.id.lastIndexOf('_')) }));
                 if (validEntities.length === 0) {
                     alert("No other entity available.");
                     return;
@@ -680,6 +700,7 @@ function getDiagramBBox() {
         height: (maxY - minY) + 2 * padding
     };
 }
+
 
 /***************************************
  * Initial rendering of the graph
