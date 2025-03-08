@@ -1,6 +1,5 @@
 import d3SvgToPng from 'd3-svg-to-png';
 const icons = import.meta.glob('/icons/*.svg', { eager: true, query: '?url', import: 'default' });
-console.log(icons['/icons/plus.svg']);
 
 /***************************************
  * Dynamic SVG size (full window width & height minus button area)
@@ -58,21 +57,21 @@ svg.call(zoom);
  ***************************************/
 let config = {
     "nodes": [
-        {"id": "Entity_1741374044081", "type": "entity", "text": "Entity"},
-        {"id": "Entity_1741374049158", "type": "entity", "text": "Entity"},
-        {"id": "Relation_1741374062200", "type": "relationship", "text": "Relation"},
-        {"id": "Attribut_1741374067971", "type": "attribute", "text": "Attribute"},
-        {"id": "Attribut_1741374073140", "type": "attribute", "text": "Attribute"},
-        {"id": "Attribute_1741374083026", "type": "attribute", "text": "Attribute"},
-        {"id": "Attribute_1741374090093", "type": "attribute", "text": "Attribute"}
+        { "id": "Entity_1741374044081", "type": "entity", "text": "Entity" },
+        { "id": "Entity_1741374049158", "type": "entity", "text": "Entity" },
+        { "id": "Relation_1741374062200", "type": "relationship", "text": "Relation" },
+        { "id": "Attribut_1741374067971", "type": "attribute", "text": "Attribute" },
+        { "id": "Attribut_1741374073140", "type": "attribute", "text": "Attribute" },
+        { "id": "Attribute_1741374083026", "type": "attribute", "text": "Attribute" },
+        { "id": "Attribute_1741374090093", "type": "attribute", "text": "Attribute" }
     ],
     "links": [
-        {"source": "Entity_1741374049158", "target": "Relation_1741374062200", "cardinality": "1"},
-        {"source": "Relation_1741374062200", "target": "Entity_1741374044081", "cardinality": "n"},
-        {"source": "Entity_1741374049158", "target": "Attribut_1741374067971"},
-        {"source": "Entity_1741374049158", "target": "Attribut_1741374073140"},
-        {"source": "Entity_1741374044081", "target": "Attribute_1741374083026"},
-        {"source": "Entity_1741374044081", "target": "Attribute_1741374090093"}
+        { "source": "Entity_1741374049158", "target": "Relation_1741374062200", "cardinality": "1" },
+        { "source": "Relation_1741374062200", "target": "Entity_1741374044081", "cardinality": "n" },
+        { "source": "Entity_1741374049158", "target": "Attribut_1741374067971" },
+        { "source": "Entity_1741374049158", "target": "Attribut_1741374073140" },
+        { "source": "Entity_1741374044081", "target": "Attribute_1741374083026" },
+        { "source": "Entity_1741374044081", "target": "Attribute_1741374090093" }
     ]
 };
 
@@ -83,22 +82,106 @@ let currentContextNode = null; // Node for context menu
 /***************************************
  * Modal functionality
  ***************************************/
+function truncateString(str) {
+    if (str.length <= 10) {
+        return str;
+    } else {
+        return str.substring(0, 10) + '...';
+    }
+}
+
 function showModal(options, callback) {
-    // Options: type ('text' or 'select'), title, defaultValue, options (for select: array of {value, text})
+    // Options: type ('text' or 'select'), title, defaultValue, options (for select: Array of {value, text}), nodeType ('attribute', 'relationship', 'entity')
     const modal = d3.select("#modal");
-    d3.select("#modal-title").text(options.title || "");
+    const modalTitle = d3.select("#modal-title")
+        .text(options.title || "")
+        .style("margin-bottom", "16px");
     const content = d3.select("#modal-content");
     content.html("");
-    
+
     if (options.type === "text") {
-        content.append("input")
-            .attr("type", "text")
-            .attr("id", "modal-input")
-            .attr("value", options.defaultValue || "");
+        // If a nodeType is specified, an SVG element with the corresponding shape is created.
+        if (options.nodeType) {
+            // Remove bottom margin of the title if an SVG is shown
+            modalTitle.style("margin-bottom", "0");
+            // Create an SVG container with fixed dimensions
+            const svg = content.append("svg")
+                .attr("width", 260)
+                .attr("height", 130)
+                .style("border", "none");
+
+            let defaultLabel = "";
+            // Determine shape and standard text depending on nodeType
+            switch (options.nodeType) {
+                case "attribute":
+                    svg.append("ellipse")
+                        .attr("cx", 130)
+                        .attr("cy", 65)
+                        .attr("rx", 50)
+                        .attr("ry", 25)
+                        .attr("fill", "#66ccff")
+                        .attr("stroke", "#333")
+                        .attr("stroke-width", "0");
+                    defaultLabel = "Attribute";
+                    break;
+                case "relationship":
+                    svg.append("polygon")
+                        .attr("points", "0,-40 56,0 0,40 -56,0")
+                        .attr("fill", "#ccffcc")
+                        .attr("stroke", "#333")
+                        .attr("stroke-width", "0")
+                        .attr("transform", "translate(130, 65)");
+                    defaultLabel = "Relation";
+                    break;
+                case "entity":
+                    svg.append("rect")
+                        .attr("x", 70)
+                        .attr("y", 35)
+                        .attr("width", 120)
+                        .attr("height", 60)
+                        .attr("rx", 10)
+                        .attr("ry", 10)
+                        .attr("fill", "#ffcc00")
+                        .attr("stroke", "#333")
+                        .attr("stroke-width", "0");
+                    defaultLabel = "Entity";
+                    break;
+                default:
+                    break;
+            }
+
+            // Add text to the SVG
+            const svgText = svg.append("text")
+                .attr("x", 130)
+                .attr("y", 65)
+                .attr("text-anchor", "middle")
+                .attr("dy", "0.35em")
+                .style("font-size", "14px")
+                .text(truncateString(options.defaultValue) || defaultLabel);
+
+            // Input field that auto updates the SVG text,
+            // now with a placeholder based on the nodeType
+            const inputField = content.append("input")
+                .attr("type", "text")
+                .attr("id", "modal-input")
+                .attr("value", options.defaultValue || "")
+                .attr("placeholder", defaultLabel);
+
+            inputField.on("input", function () {
+                const inputValue = inputField.node().value;
+                svgText.text(truncateString(inputValue) || defaultLabel);
+            });
+        } else {
+            // Without nodeType, show only input field (no placeholder needed)
+            content.append("input")
+                .attr("type", "text")
+                .attr("id", "modal-input")
+                .attr("value", options.defaultValue || "");
+        }
     } else if (options.type === "select") {
+        // Create select options
         const sel = content.append("select")
             .attr("id", "modal-select");
-        
         sel.selectAll("option")
             .data(options.options)
             .enter()
@@ -107,17 +190,18 @@ function showModal(options, callback) {
             .text(d => d.text)
             .property("selected", d => d.value === options.defaultValue);
     }
-    
+
+    // Show Modal
     modal.style("display", "block");
-    
+
     d3.select("#modal-ok").on("click", function () {
-        let value = options.type === "text" 
-            ? d3.select("#modal-input").property("value") 
+        let value = options.type === "text"
+            ? d3.select("#modal-input").property("value")
             : d3.select("#modal-select").property("value");
         modal.style("display", "none");
         callback(value);
     });
-    
+
     d3.select("#modal-cancel").on("click", function () {
         modal.style("display", "none");
         callback(null);
@@ -237,8 +321,8 @@ function updateGraph() {
     node = nodeEnter.merge(node);
 
     node.filter(d => d.type === "attribute")
-    .select("text")
-    .style("text-decoration", d => d.primary ? "underline" : "none");
+        .select("text")
+        .style("text-decoration", d => d.primary ? "underline" : "none");
 
     simulation.nodes(nodes);
     simulation.force("link").links(links);
@@ -276,7 +360,6 @@ function ticked() {
  * Node size and font customization
  ***************************************/
 function adjustNodeSize(g, d) {
-    console.log(g, d)
     const textEl = g.select("text");
     if (textEl.empty()) return;
     let bbox = textEl.node().getBBox();
@@ -333,7 +416,7 @@ function dragended(event, d) {
 function editText(event, d) {
     event.stopPropagation();
     const currentG = d3.select(this);
-    showModal({ type: "text", title: "Edit text", defaultValue: d.text }, function (newText) {
+    showModal({ type: "text", title: "Edit text", defaultValue: d.text, nodeType: d.type }, function (newText) {
         if (newText !== null && newText.trim() !== "") {
             d.text = newText;
             currentG.select("text").text(newText);
@@ -347,7 +430,7 @@ function editText(event, d) {
 // Edit cardinality via modal – allowed values: 1, n, m
 function editCardinality(event, d) {
     event.stopPropagation();
-    showModal({ type: "select", title: "Edit cardinality", options: [{value: '1', text: '1'}, {value: 'n', text: 'n'}, {value: 'm', text: 'm'}], defaultValue: d.cardinality }, function (newCard) {
+    showModal({ type: "select", title: "Edit cardinality", options: [{ value: '1', text: '1' }, { value: 'n', text: 'n' }, { value: 'm', text: 'm' }], defaultValue: d.cardinality }, function (newCard) {
         if (newCard !== null && newCard.trim() !== "") {
             newCard = newCard.trim();
             if (newCard !== "1" && newCard.toLowerCase() !== "n" && newCard.toLowerCase() !== "m") {
@@ -469,7 +552,7 @@ function showContextMenu(event, d) {
     });
     // Create new relationship (for entities)
     d3.select("#cm-add-relationship").on("click", function () {
-        showModal({ type: "text", title: "Name of the new relationship", defaultValue: "" }, function (relText) {
+        showModal({ type: "text", title: "Name of the new relationship", defaultValue: "", nodeType: 'relationship' }, function (relText) {
             if (relText && relText.trim() !== "") {
                 const validEntities = nodes.filter(n => n.type === "entity" && n.id !== currentContextNode.id)
                     .map(n => ({ value: n.id, text: n.id.substring(0, n.id.lastIndexOf('_')) }));
@@ -582,7 +665,7 @@ d3.select("#diagram-new").on("click", function () {
     config = {
         "nodes": [],
         "links": []
-      };
+    };
     nodes = config.nodes.slice();
     links = config.links.slice();
     updateGraph();
@@ -642,7 +725,7 @@ function exportImage(format, quality) {
     const svgNS = "http://www.w3.org/2000/svg";
     const watermark = document.createElementNS(svgNS, "text");
     watermark.textContent = "Created with ermodell";
-    watermark.setAttribute("x", "5"); 
+    watermark.setAttribute("x", "5");
     watermark.setAttribute("y", bbox.height - 5);
     watermark.setAttribute("dominant-baseline", "text-after-edge");
     watermark.style.fontSize = "10px";
