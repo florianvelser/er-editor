@@ -76,6 +76,7 @@ function showModal(options, callback) {
     d3.select("#modal-title").text(options.title || "");
     const content = d3.select("#modal-content");
     content.html("");
+    
     if (options.type === "text") {
         content.append("input")
             .attr("type", "text")
@@ -84,19 +85,26 @@ function showModal(options, callback) {
     } else if (options.type === "select") {
         const sel = content.append("select")
             .attr("id", "modal-select");
+        
         sel.selectAll("option")
             .data(options.options)
             .enter()
             .append("option")
             .attr("value", d => d.value)
-            .text(d => d.text);
+            .text(d => d.text)
+            .property("selected", d => d.value === options.defaultValue);
     }
+    
     modal.style("display", "block");
+    
     d3.select("#modal-ok").on("click", function () {
-        let value = options.type === "text" ? d3.select("#modal-input").property("value") : d3.select("#modal-select").property("value");
+        let value = options.type === "text" 
+            ? d3.select("#modal-input").property("value") 
+            : d3.select("#modal-select").property("value");
         modal.style("display", "none");
         callback(value);
     });
+    
     d3.select("#modal-cancel").on("click", function () {
         modal.style("display", "none");
         callback(null);
@@ -326,7 +334,7 @@ function editText(event, d) {
 // Edit cardinality via modal – allowed values: 1, n, m
 function editCardinality(event, d) {
     event.stopPropagation();
-    showModal({ type: "text", title: "Edit cardinality (only 1, n, m)", defaultValue: d.cardinality }, function (newCard) {
+    showModal({ type: "select", title: "Edit cardinality", options: [{value: '1', text: '1'}, {value: 'n', text: 'n'}, {value: 'm', text: 'm'}], defaultValue: d.cardinality }, function (newCard) {
         if (newCard !== null && newCard.trim() !== "") {
             newCard = newCard.trim();
             if (newCard !== "1" && newCard.toLowerCase() !== "n" && newCard.toLowerCase() !== "m") {
@@ -457,6 +465,7 @@ function showContextMenu(event, d) {
                     alert("No other entity available.");
                     return;
                 }
+                console.log(validEntities)
                 showModal({ type: "select", title: "Select target entity", options: validEntities }, function (targetEntity) {
                     if (targetEntity) {
                         const newRelId = relText + "_" + Date.now();
