@@ -735,6 +735,7 @@ function showContextMenu(event, d) {
     d3.select("#cm-add-attribute").on("click", function () {
         showModal({ type: "text", title: "Add new attribute", defaultValue: "" }, function (attrText) {
             if (attrText && attrText.trim() !== "") {
+                historyManager.save(getStateSnapshot());
                 const newId = attrText + "_" + Date.now();
                 const newAttr = { id: newId, type: "attribute", text: attrText };
                 nodes.push(newAttr);
@@ -802,6 +803,7 @@ function showContextMenu(event, d) {
     d3.select("#cm-add-attribute-rel").on("click", function () {
         showModal({ type: "text", title: "Add new attribute for relationship", defaultValue: "" }, function (attrText) {
             if (attrText && attrText.trim() !== "") {
+                historyManager.save(getStateSnapshot());
                 const newId = attrText + "_" + Date.now();
                 const newAttr = { id: newId, type: "attribute", text: attrText };
                 nodes.push(newAttr);
