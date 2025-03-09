@@ -1,5 +1,72 @@
 import d3SvgToPng from 'd3-svg-to-png';
 const icons = import.meta.glob('/icons/*.svg', { eager: true, query: '?url', import: 'default' });
+/***************************************
+ * History Manager for Undo/Redo functionality
+ ***************************************/
+class HistoryManager {
+    constructor() {
+        this.undoStack = [];
+        this.redoStack = [];
+        // Cache DOM elements
+        this.undoButton = document.getElementById("undo-btn");
+        this.redoButton = document.getElementById("redo-btn");
+        this.updateButtons();
+    }
+
+    updateButtons() {
+        // Toggle "disabled" class based on stack lengths
+        this.undoButton.classList.toggle("disabled", this.undoStack.length === 0);
+        this.redoButton.classList.toggle("disabled", this.redoStack.length === 0);
+    }
+
+    // Save a snapshot of the current state. Clear the redo stack on new action.
+    save(state) {
+        // Deep copy the state
+        this.undoStack.push(JSON.parse(JSON.stringify(state)));
+        this.redoStack.length = 0;
+        this.updateButtons();
+    }
+
+    // Undo: push current state to redoStack and return the last state from undoStack
+    undo(currentState) {
+        if (this.undoStack.length === 0) return null;
+        // Deep copy current state before pushing to redoStack
+        this.redoStack.push(JSON.parse(JSON.stringify(currentState)));
+        const lastState = this.undoStack.pop();
+        this.updateButtons();
+        return lastState;
+    }
+
+    // Redo: push current state to undoStack and return the last state from redoStack
+    redo(currentState) {
+        if (this.redoStack.length === 0) return null;
+        this.undoStack.push(JSON.parse(JSON.stringify(currentState)));
+        const nextState = this.redoStack.pop();
+        this.updateButtons();
+        return nextState;
+    }
+}
+
+// Create a global history manager instance
+const historyManager = new HistoryManager();
+
+// Helper function to capture the current state (nodes and links)
+function getStateSnapshot() {
+    config.nodes = nodes.map(n => ({
+        id: n.id,
+        type: n.type,
+        text: n.text,
+        primary: n.primary,
+        x: n.x,
+        y: n.y
+    }));
+    config.links = links.map(l => ({
+        source: typeof l.source === "object" ? l.source.id : l.source,
+        target: typeof l.target === "object" ? l.target.id : l.target,
+        cardinality: l.cardinality
+    }));
+    return config;
+}
 
 /***************************************
  * Dynamic SVG size (full window width & height minus button area)
@@ -520,6 +587,7 @@ function editText(event, d) {
     const currentG = d3.select(this);
     showModal({ type: "text", title: "Edit text", defaultValue: d.text, nodeType: d.type }, function (newText) {
         if (newText !== null && newText.trim() !== "") {
+            historyManager.save(getStateSnapshot());
             d.text = newText;
             currentG.select("text").text(newText);
             adjustNodeSize(currentG, d);
@@ -534,6 +602,7 @@ function editCardinality(event, d) {
     event.stopPropagation();
     showModal({ type: "select", title: "Edit cardinality", options: [{ value: '1', text: '1' }, { value: 'n', text: 'n' }, { value: 'm', text: 'm' }], defaultValue: d.cardinality }, function (newCard) {
         if (newCard !== null && newCard.trim() !== "") {
+            historyManager.save(getStateSnapshot());
             newCard = newCard.trim();
             if (newCard !== "1" && newCard.toLowerCase() !== "n" && newCard.toLowerCase() !== "m") {
                 alert("Invalid value! Please enter only 1, n or m.");
@@ -580,6 +649,7 @@ function showContextMenu(event, d) {
 
     // Delete element (and for entities, also remove related attributes and relationships)
     d3.select("#cm-delete").on("click", function () {
+        historyManager.save(getStateSnapshot());
         if (currentContextNode.type === "entity") {
             let removeSet = new Set([currentContextNode.id]);
 
@@ -660,6 +730,7 @@ function showContextMenu(event, d) {
     d3.select("#cm-add-relationship").on("click", function () {
         showModal({ type: "text", title: "Name of the new relationship", defaultValue: "", nodeType: 'relationship' }, function (relText) {
             if (relText && relText.trim() !== "") {
+                historyManager.save(getStateSnapshot());
                 const validEntities = nodes.filter(n => n.type === "entity" && n.id !== currentContextNode.id)
                     .map(n => ({ value: n.id, text: n.id.substring(0, n.id.lastIndexOf('_')) }));
                 if (validEntities.length === 0) {
@@ -727,12 +798,53 @@ d3.select("body").on("click", function () {
     d3.select("#context-menu").style("display", "none");
 });
 
+
+/***************************************
+ * Undo and Redo functions
+ ***************************************/
+function undo() {
+    const prevState = historyManager.undo(getStateSnapshot());
+    if (prevState) {
+        config = prevState;
+        nodes = config.nodes.slice();
+        links = config.links.slice();
+        nodes.forEach(n => {
+            if (typeof n.x !== "number" || typeof n.y !== "number") {
+                n.x = width / 2;
+                n.y = height / 2;
+            }
+        });
+        updateGraph();
+    }
+}
+
+function redo() {
+    const nextState = historyManager.redo(getStateSnapshot());
+    if (nextState) {
+        config = nextState;
+        nodes = config.nodes.slice();
+        links = config.links.slice();
+        nodes.forEach(n => {
+            if (typeof n.x !== "number" || typeof n.y !== "number") {
+                n.x = width / 2;
+                n.y = height / 2;
+            }
+        });
+        updateGraph();
+    }
+}
+
+// Attach undo/redo to buttons
+d3.select("#undo-btn").on("click", undo);
+d3.select("#redo-btn").on("click", redo);
+
 /***************************************
  * Button actions: Add new entity, JSON export/import, and reset view
  ***************************************/
 d3.select("#add-entity").on("click", function () {
     showModal({ type: "text", title: "Name of the new entity", defaultValue: "" }, function (entityName) {
         if (entityName && entityName.trim() !== "") {
+            historyManager.save(getStateSnapshot());
             const newId = entityName + "_" + Date.now();
             const newEntity = { id: newId, type: "entity", text: entityName, x: width / 2, y: height / 2 };
             nodes.push(newEntity);
