@@ -43,9 +43,8 @@ window.addEventListener("resize", function () {
  * Zoom and Pan functionality
  ***************************************/
 function isContentFullyOutside() {
-    // Hole die Bounding Box des Inhalts
+    if (config.nodes.length === 0) return false;
     const bbox = getDiagramBBox();
-    // Aktuellen Zoom/Transform aus dem SVG holen
     const transform = d3.zoomTransform(svg.node());
 
     // Transformiere die Eckkoordinaten der Bounding Box
@@ -58,11 +57,11 @@ function isContentFullyOutside() {
     const svgWidth = +svg.attr("width");
     const svgHeight = +svg.attr("height");
 
-    // Überprüfe, ob die gesamte Box außerhalb des SVG liegt:
-    // - rechts vom Sichtbereich: x1 > svgWidth
-    // - links: x2 < 0
-    // - unten: y1 > svgHeight
-    // - oben: y2 < 0
+    // Check whether the entire box is outside the SVG:
+    // - to the right of the viewing area: x1 > svgWidth
+    // - left: x2 < 0
+    // - bottom: y1 > svgHeight
+    // - top: y2 < 0
     if (x2 < 0 || x1 > svgWidth || y2 < 0 || y1 > svgHeight) {
         return true;
     } else {
@@ -76,26 +75,34 @@ d3.select("#zoom-level").on("input", function () {
     const logValue = minLog + (this.value / 100) * (maxLog - minLog);
     const newScale = Math.pow(10, logValue); // Neue Zoomstufe
 
-    // Aktuelle Transformation abrufen
+    // Retrieve current transformation
     const currentTransform = d3.zoomTransform(svg.node());
 
-    // Größe des Viewports bestimmen (Anzeigebereich des SVG)
+    // Determine the size of the viewport (display area of the SVG)
     const bbox = svg.node().getBoundingClientRect();
     const viewportCenterX = bbox.width / 2;
     const viewportCenterY = bbox.height / 2;
 
-    // Berechne neue Übersetzung, um das aktuelle Zentrum zu behalten
+    // Calculate new translation to keep the current centre
     const newX = (viewportCenterX - currentTransform.x) / currentTransform.k * newScale;
     const newY = (viewportCenterY - currentTransform.y) / currentTransform.k * newScale;
 
-    // Erstelle die neue Transformationsmatrix
+    // Create the new transformation matrix
     const newTransform = d3.zoomIdentity
         .translate(viewportCenterX - newX, viewportCenterY - newY)
         .scale(newScale);
 
-    // Sofort anwenden
     svg.call(zoom.transform, newTransform);
 });
+
+function updateButtonFitToContent() {
+    if (isContentFullyOutside()) {
+        document.getElementById('back-to-content').style.display = 'block';
+    } else {
+        document.getElementById('back-to-content').style.display = 'none';
+    }
+}
+
 const zoom = d3.zoom()
     .scaleExtent([0.1, 10])
     .on("start", (event) => {
@@ -110,11 +117,7 @@ const zoom = d3.zoom()
         document.getElementById('zoom-text').innerText = Math.round(event.transform.k * 100) + "%";
         menu.style("display", "none");
         gMain.attr("transform", event.transform);
-        if(isContentFullyOutside()) {
-            document.getElementById('back-to-content').style.display = 'block';
-        } else {
-            document.getElementById('back-to-content').style.display = 'none';
-        }
+        updateButtonFitToContent();
     })
     .on("end", () => {
         svg.style("cursor", "grab");
@@ -271,7 +274,7 @@ function showModal(options, callback) {
     // Display the modal
     modal.style("display", "block");
 
-    if(inputField) {
+    if (inputField) {
         inputField.node().focus();
         inputField.node().setSelectionRange(-1, -1);
     }
@@ -412,6 +415,7 @@ function updateGraph() {
     simulation.nodes(nodes);
     simulation.force("link").links(links);
     simulation.alpha(1).restart();
+    updateButtonFitToContent();
 }
 
 function ticked() {
@@ -566,7 +570,6 @@ function showContextMenu(event, d) {
     }
     menuHTML += '</ul>';
     var left = event.pageX;
-    console.log(event.pageX + parseInt(menu.style("width")));
     if (event.pageX + parseInt(menu.style("width")) > window.innerWidth) {
         left = event.pageX - parseInt(menu.style("width"));
     }
@@ -784,10 +787,10 @@ d3.select("#projectname").on("click", function () {
 });
 
 function baseName(str) {
-   var base = new String(str).substring(str.lastIndexOf('/') + 1); 
-    if(base.lastIndexOf(".") != -1)       
+    var base = new String(str).substring(str.lastIndexOf('/') + 1);
+    if (base.lastIndexOf(".") != -1)
         base = base.substring(0, base.lastIndexOf("."));
-   return base;
+    return base;
 }
 
 d3.select("#upload-json").on("change", function () {
@@ -885,18 +888,19 @@ d3.select("#fit-content").on("click", function () {
 });
 
 function fitToScreen() {
+    if (config.nodes.length === 0) return;
     const bbox = getDiagramBBox();
     const svgRect = svg.node().getBoundingClientRect();
-    
+
     const scaleX = svgRect.width / bbox.width;
     const scaleY = svgRect.height / bbox.height;
-    const scale = Math.max(0.1, Math.min(scaleX, scaleY, 1)); // Maximal 1-fache Skalierung
-    
+    const scale = Math.max(0.1, Math.min(scaleX, scaleY, 1)); // Maximum 1x scaling
+
     const translateX = (svgRect.width - bbox.width * scale) / 2 - bbox.minX * scale;
     const translateY = (svgRect.height - bbox.height * scale) / 2 - bbox.minY * scale;
-    
+
     const transform = d3.zoomIdentity.translate(translateX, translateY).scale(scale);
-    
+
     svg.transition()
         .duration(750)
         .call(zoom.transform, transform);
