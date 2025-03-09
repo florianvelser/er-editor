@@ -321,3 +321,10 @@ input[type=range]::-ms-thumb {
 #projectname:hover {
     background-color: #e2e2e2;
 }
+#back-to-content {
+    position: absolute;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 5px;
+}

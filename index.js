@@ -8,6 +8,7 @@ const STROKE_WIDTH = 0;
 const menu = d3.select("#context-menu");
 var projectname = "er_diagram";
 document.getElementById("projectname").innerHTML = projectname + ".json";
+document.getElementById("zoom-level").value = 50;
 
 function setProjectname(name) {
     projectname = name;
@@ -41,6 +42,34 @@ window.addEventListener("resize", function () {
 /***************************************
  * Zoom and Pan functionality
  ***************************************/
+function isContentFullyOutside() {
+    // Hole die Bounding Box des Inhalts
+    const bbox = getDiagramBBox();
+    // Aktuellen Zoom/Transform aus dem SVG holen
+    const transform = d3.zoomTransform(svg.node());
+
+    // Transformiere die Eckkoordinaten der Bounding Box
+    const x1 = transform.applyX(bbox.minX) + 20;
+    const y1 = transform.applyY(bbox.minY) + 20;
+    const x2 = transform.applyX(bbox.minX + bbox.width) - 20;
+    const y2 = transform.applyY(bbox.minY + bbox.height) - 20;
+
+    // Hole die Dimensionen des sichtbaren Bereichs (SVG)
+    const svgWidth = +svg.attr("width");
+    const svgHeight = +svg.attr("height");
+
+    // Überprüfe, ob die gesamte Box außerhalb des SVG liegt:
+    // - rechts vom Sichtbereich: x1 > svgWidth
+    // - links: x2 < 0
+    // - unten: y1 > svgHeight
+    // - oben: y2 < 0
+    if (x2 < 0 || x1 > svgWidth || y2 < 0 || y1 > svgHeight) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 d3.select("#zoom-level").on("input", function () {
     const minLog = Math.log10(0.1); // -1
     const maxLog = Math.log10(10);  // 1
@@ -81,6 +110,11 @@ const zoom = d3.zoom()
         document.getElementById('zoom-text').innerText = Math.round(event.transform.k * 100) + "%";
         menu.style("display", "none");
         gMain.attr("transform", event.transform);
+        if(isContentFullyOutside()) {
+            document.getElementById('back-to-content').style.display = 'block';
+        } else {
+            document.getElementById('back-to-content').style.display = 'none';
+        }
     })
     .on("end", () => {
         svg.style("cursor", "grab");
@@ -839,6 +873,32 @@ d3.select("#export-png").on("click", function () {
 d3.select("#export-webp").on("click", function () {
     exportImage('webp', 1);
 });
+
+d3.select("#back-to-content").on("click", function () {
+    fitToScreen();
+});
+
+d3.select("#fit-content").on("click", function () {
+    fitToScreen();
+});
+
+function fitToScreen() {
+    const bbox = getDiagramBBox();
+    const svgRect = svg.node().getBoundingClientRect();
+    
+    const scaleX = svgRect.width / bbox.width;
+    const scaleY = svgRect.height / bbox.height;
+    const scale = Math.max(0.1, Math.min(scaleX, scaleY, 1)); // Maximal 1-fache Skalierung
+    
+    const translateX = (svgRect.width - bbox.width * scale) / 2 - bbox.minX * scale;
+    const translateY = (svgRect.height - bbox.height * scale) / 2 - bbox.minY * scale;
+    
+    const transform = d3.zoomIdentity.translate(translateX, translateY).scale(scale);
+    
+    svg.transition()
+        .duration(750)
+        .call(zoom.transform, transform);
+}
 
 function getDiagramBBox() {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
