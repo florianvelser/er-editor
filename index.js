@@ -13,6 +13,12 @@ class HistoryManager {
         this.updateButtons();
     }
 
+    clear() {
+        this.undoStack.length = 0;
+        this.redoStack.length = 0;
+        this.updateButtons();
+    }
+
     updateButtons() {
         // Toggle "disabled" class based on stack lengths
         this.undoButton.classList.toggle("disabled", this.undoStack.length === 0);
@@ -233,7 +239,8 @@ function truncateString(str) {
 }
 
 function showModal(options, callback) {
-    // Options: type ('text' or 'select'), title, defaultValue, options (for select: Array of {value, text}), nodeType ('attribute', 'relationship', 'entity')
+    // Options: type ('text', 'select', or 'confirm'), title, defaultValue, options (for select: Array of {value, text}),
+    // nodeType ('attribute', 'relationship', 'entity'), message (for confirm)
 
     // Select modal elements and clear previous content
     const modal = d3.select("#modal");
@@ -244,8 +251,8 @@ function showModal(options, callback) {
     content.html("");
 
     let inputField; // Reference to the input element
-    if (options.type === "text") {
 
+    if (options.type === "text") {
         if (options.nodeType) {
             // Remove bottom margin of title when an SVG is displayed
             modalTitle.style("margin-bottom", "0");
@@ -324,7 +331,6 @@ function showModal(options, callback) {
                 .attr("id", "modal-input")
                 .attr("value", options.defaultValue || "");
         }
-
     } else if (options.type === "select") {
         // Create a select element with options
         const sel = content.append("select")
@@ -336,6 +342,10 @@ function showModal(options, callback) {
             .attr("value", d => d.value)
             .text(d => d.text)
             .property("selected", d => d.value === options.defaultValue);
+    } else if (options.type === "confirm") {
+        // Create a confirmation prompt with the provided message
+        content.append("p")
+            .text(options.message || "Are you sure?");
     }
 
     // Display the modal
@@ -346,19 +356,30 @@ function showModal(options, callback) {
         inputField.node().setSelectionRange(-1, -1);
     }
 
-    // OK button click handler: retrieve the input/selected value and close the modal
+    // OK button click handler: retrieve the input/selected value or return confirmation result
     d3.select("#modal-ok").on("click", function () {
-        const value = options.type === "text"
-            ? d3.select("#modal-input").property("value")
-            : d3.select("#modal-select").property("value");
+        let value;
+        if (options.type === "confirm") {
+            value = true;
+        } else if (options.type === "text") {
+            value = d3.select("#modal-input").property("value");
+        } else if (options.type === "select") {
+            value = d3.select("#modal-select").property("value");
+        }
         modal.style("display", "none");
         callback(value);
     });
 
-    // Cancel button click handler: close the modal without returning a value
+    // Cancel button click handler: close the modal and return appropriate value
     d3.select("#modal-cancel").on("click", function () {
+        let value;
+        if (options.type === "confirm") {
+            value = false;
+        } else {
+            value = null;
+        }
         modal.style("display", "none");
-        callback(null);
+        callback(value);
     });
 }
 
@@ -756,6 +777,7 @@ function showContextMenu(event, d) {
     });
     // Set as primary key (for attributes)
     d3.select("#cm-set-primary").on("click", function () {
+        historyManager.save(getStateSnapshot());
         const attributeNode = currentContextNode;
         // Find the parent entity
         const parentEntity = nodes.find(n =>
@@ -880,14 +902,19 @@ d3.select("#upload-json-btn").on("click", function () {
 });
 
 d3.select("#diagram-new").on("click", function () {
-    setProjectname("er_diagram");
-    config = {
-        "nodes": [],
-        "links": []
-    };
-    nodes = config.nodes.slice();
-    links = config.links.slice();
-    updateGraph();
+    showModal({ type: "confirm", title: "New Document", message: "Are you sure you want to create a new document? Your current status will be overwritten and not saved. This action cannot be undone. Save your work before you continue." }, function (result) {
+        if(result) {
+            historyManager.clear();
+            setProjectname("er_diagram");
+            config = {
+                "nodes": [],
+                "links": []
+            };
+            nodes = config.nodes.slice();
+            links = config.links.slice();
+            updateGraph();
+        }
+    });
 });
 
 d3.select("#projectname").on("click", function () {
