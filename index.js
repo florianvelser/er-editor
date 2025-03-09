@@ -47,17 +47,17 @@ function isContentFullyOutside() {
     const bbox = getDiagramBBox();
     const transform = d3.zoomTransform(svg.node());
 
-    // Transformiere die Eckkoordinaten der Bounding Box
+    // Transform the bounding box coordinates
     const x1 = transform.applyX(bbox.minX) + 20;
     const y1 = transform.applyY(bbox.minY) + 20;
     const x2 = transform.applyX(bbox.minX + bbox.width) - 20;
     const y2 = transform.applyY(bbox.minY + bbox.height) - 20;
 
-    // Hole die Dimensionen des sichtbaren Bereichs (SVG)
+    // Get SVG dimensions
     const svgWidth = +svg.attr("width");
     const svgHeight = +svg.attr("height");
 
-    // Check whether the entire box is outside the SVG:
+    // Check if the entire box is outside the SVG
     // - to the right of the viewing area: x1 > svgWidth
     // - left: x2 < 0
     // - bottom: y1 > svgHeight
