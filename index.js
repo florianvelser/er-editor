@@ -434,13 +434,16 @@ var timeout = null;
 function dragstarted(event, d) {
     drag_start = Date.now();
     timeout = setTimeout(() => {
-        showContextMenu(event.sourceEvent, d);
+        if(event.sourceEvent.touches) {
+            showContextMenu(event.sourceEvent, d);
+        }
     }, 300);
     if (!event.active) simulation.alphaTarget(0.3).restart();
     d.fx = d.x;
     d.fy = d.y;
 }
 function dragged(event, d) {
+    menu.style("display", "none");
     clearTimeout(timeout);
     d.fx = event.x;
     d.fy = event.y;
@@ -508,8 +511,13 @@ function showContextMenu(event, d) {
         menuHTML += `<li id="cm-add-attribute-rel" style="background-image: url(&quot;${icons['/icons/plus.svg']}&quot;);">Add new attribute</li>`;
     }
     menuHTML += '</ul>';
+    var left = event.pageX;
+    console.log(event.pageX + parseInt(menu.style("width")));
+    if(event.pageX + parseInt(menu.style("width")) > window.innerWidth) {
+        left = event.pageX - parseInt(menu.style("width"));
+    }
     menu.html(menuHTML);
-    menu.style("left", event.pageX + "px")
+    menu.style("left", left + "px")
         .style("top", event.pageY + "px")
         .style("display", "block");
 
