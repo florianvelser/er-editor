@@ -6,6 +6,13 @@ const icons = import.meta.glob('/icons/*.svg', { eager: true, query: '?url', imp
  ***************************************/
 const STROKE_WIDTH = 0;
 const menu = d3.select("#context-menu");
+var projectname = "er_diagram";
+document.getElementById("projectname").innerHTML = projectname + ".json";
+
+function setProjectname(name) {
+    projectname = name;
+    document.getElementById("projectname").innerText = projectname + ".json";
+}
 
 const topOffset = 36;
 const bottomOffset = 36;
@@ -123,6 +130,8 @@ function truncateString(str) {
 
 function showModal(options, callback) {
     // Options: type ('text' or 'select'), title, defaultValue, options (for select: Array of {value, text}), nodeType ('attribute', 'relationship', 'entity')
+
+    // Select modal elements and clear previous content
     const modal = d3.select("#modal");
     const modalTitle = d3.select("#modal-title")
         .text(options.title || "")
@@ -130,11 +139,13 @@ function showModal(options, callback) {
     const content = d3.select("#modal-content");
     content.html("");
 
+    let inputField; // Reference to the input element
     if (options.type === "text") {
-        // If a nodeType is specified, an SVG element with the corresponding shape is created.
+
         if (options.nodeType) {
-            // Remove bottom margin of the title if an SVG is shown
+            // Remove bottom margin of title when an SVG is displayed
             modalTitle.style("margin-bottom", "0");
+
             // Create an SVG container with fixed dimensions
             const svg = content.append("svg")
                 .attr("width", 260)
@@ -142,7 +153,7 @@ function showModal(options, callback) {
                 .style("border", "none");
 
             let defaultLabel = "";
-            // Determine shape and standard text depending on nodeType
+            // Draw a shape and set a default label based on nodeType
             switch (options.nodeType) {
                 case "attribute":
                     svg.append("ellipse")
@@ -181,7 +192,7 @@ function showModal(options, callback) {
                     break;
             }
 
-            // Add text to the SVG
+            // Append text to the SVG; uses truncateString() if available
             const svgText = svg.append("text")
                 .attr("x", 130)
                 .attr("y", 65)
@@ -190,27 +201,28 @@ function showModal(options, callback) {
                 .style("font-size", "14px")
                 .text(truncateString(options.defaultValue) || defaultLabel);
 
-            // Input field that auto updates the SVG text,
-            // now with a placeholder based on the nodeType
-            const inputField = content.append("input")
+            // Create input field with a placeholder based on the nodeType
+            inputField = content.append("input")
                 .attr("type", "text")
                 .attr("id", "modal-input")
                 .attr("value", options.defaultValue || "")
                 .attr("placeholder", defaultLabel);
 
+            // Update the SVG text as the user types
             inputField.on("input", function () {
-                const inputValue = inputField.node().value;
+                const inputValue = this.value;
                 svgText.text(truncateString(inputValue) || defaultLabel);
             });
         } else {
-            // Without nodeType, show only input field (no placeholder needed)
-            content.append("input")
+            // Create a simple input field if no nodeType is specified
+            inputField = content.append("input")
                 .attr("type", "text")
                 .attr("id", "modal-input")
                 .attr("value", options.defaultValue || "");
         }
+
     } else if (options.type === "select") {
-        // Create select options
+        // Create a select element with options
         const sel = content.append("select")
             .attr("id", "modal-select");
         sel.selectAll("option")
@@ -222,22 +234,30 @@ function showModal(options, callback) {
             .property("selected", d => d.value === options.defaultValue);
     }
 
-    // Show Modal
+    // Display the modal
     modal.style("display", "block");
 
+    if(inputField) {
+        inputField.node().focus();
+        inputField.node().setSelectionRange(-1, -1);
+    }
+
+    // OK button click handler: retrieve the input/selected value and close the modal
     d3.select("#modal-ok").on("click", function () {
-        let value = options.type === "text"
+        const value = options.type === "text"
             ? d3.select("#modal-input").property("value")
             : d3.select("#modal-select").property("value");
         modal.style("display", "none");
         callback(value);
     });
 
+    // Cancel button click handler: close the modal without returning a value
     d3.select("#modal-cancel").on("click", function () {
         modal.style("display", "none");
         callback(null);
     });
 }
+
 
 /***************************************
  * Force simulation and rendering
@@ -434,7 +454,7 @@ var timeout = null;
 function dragstarted(event, d) {
     drag_start = Date.now();
     timeout = setTimeout(() => {
-        if(event.sourceEvent.touches) {
+        if (event.sourceEvent.touches) {
             showContextMenu(event.sourceEvent, d);
         }
     }, 300);
@@ -449,7 +469,7 @@ function dragged(event, d) {
     d.fy = event.y;
 }
 function dragended(event, d) {
-    if(Date.now() - drag_start < 500) {
+    if (Date.now() - drag_start < 500) {
         clearTimeout(timeout);
     }
     if (!event.active) simulation.alphaTarget(0);
@@ -513,7 +533,7 @@ function showContextMenu(event, d) {
     menuHTML += '</ul>';
     var left = event.pageX;
     console.log(event.pageX + parseInt(menu.style("width")));
-    if(event.pageX + parseInt(menu.style("width")) > window.innerWidth) {
+    if (event.pageX + parseInt(menu.style("width")) > window.innerWidth) {
         left = event.pageX - parseInt(menu.style("width"));
     }
     menu.html(menuHTML);
@@ -702,7 +722,7 @@ d3.select("#download-json").on("click", function () {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
     const dlAnchorElem = document.createElement('a');
     dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", "er_diagram.json");
+    dlAnchorElem.setAttribute("download", projectname + ".json");
     dlAnchorElem.click();
 });
 
@@ -711,6 +731,7 @@ d3.select("#upload-json-btn").on("click", function () {
 });
 
 d3.select("#diagram-new").on("click", function () {
+    setProjectname("er_diagram");
     config = {
         "nodes": [],
         "links": []
@@ -720,8 +741,22 @@ d3.select("#diagram-new").on("click", function () {
     updateGraph();
 });
 
+d3.select("#projectname").on("click", function () {
+    showModal({ type: "text", title: "Change projectname", defaultValue: projectname }, function (newText) {
+        setProjectname(newText);
+    });
+});
+
+function baseName(str) {
+   var base = new String(str).substring(str.lastIndexOf('/') + 1); 
+    if(base.lastIndexOf(".") != -1)       
+        base = base.substring(0, base.lastIndexOf("."));
+   return base;
+}
+
 d3.select("#upload-json").on("change", function () {
     const file = this.files[0];
+    setProjectname(baseName(file.name));
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function (e) {
@@ -785,7 +820,7 @@ function exportImage(format, quality) {
     clonedSvg.setAttribute('id', 'clonedSvg');
     document.body.appendChild(clonedSvg);
 
-    d3SvgToPng('#clonedSvg', 'name', {
+    d3SvgToPng('#clonedSvg', projectname, {
         scale: 3,
         format: format,
         quality: quality,

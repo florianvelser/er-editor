@@ -220,13 +220,8 @@ body:has(#modal[style*="display: block"]) .background {
 .footer {
     display: flex;
     gap: 8px;
-    padding: 8px;
     align-items: center;
-    padding-left: 12px;
-    padding-right: 12px;
-}
-.footer input[type=range] {
-    margin-left: auto;
+    height: 36px;
 }
 input[type=range] {
     appearance: none;
@@ -305,8 +300,24 @@ input[type=range]::-ms-thumb {
     background: #747474;
     cursor: pointer;
 }
+.footer .zoom {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto;
+    padding-right: 12px;
+}
 #zoom-text {
     width: 46px;
     text-align: center;
     font-size: 14px;
+}
+#projectname {
+    padding: 0 12px;
+    line-height: 36px;
+    cursor: pointer;
+}
+
+#projectname:hover {
+    background-color: #e2e2e2;
 }
