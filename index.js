@@ -777,7 +777,9 @@ d3.select("#diagram-new").on("click", function () {
 
 d3.select("#projectname").on("click", function () {
     showModal({ type: "text", title: "Change projectname", defaultValue: projectname }, function (newText) {
-        setProjectname(newText);
+        if (newText !== null && newText.trim() !== "") {
+            setProjectname(newText);
+        }
     });
 });
 
