@@ -8,9 +8,10 @@ const STROKE_WIDTH = 0;
 const menu = d3.select("#context-menu");
 
 const topOffset = document.querySelector(".menu-bar").offsetHeight;
+const bottomOffset = document.querySelector(".footer").offsetHeight;
 let svg = d3.select("svg")
     .attr("width", window.innerWidth)
-    .attr("height", window.innerHeight - topOffset);
+    .attr("height", document.documentElement.clientHeight - topOffset - bottomOffset);
 
 // Create a main group for pan and zoom
 const gMain = svg.append("g").attr("class", "gMain");
@@ -23,9 +24,9 @@ let width = +svg.attr("width"),
 
 window.addEventListener("resize", function () {
     svg.attr("width", window.innerWidth)
-        .attr("height", window.innerHeight - topOffset);
+        .attr("height", document.documentElement.clientHeight - topOffset - bottomOffset);
     width = window.innerWidth;
-    height = window.innerHeight - topOffset;
+    height = document.documentElement.clientHeight - topOffset - bottomOffset;
     simulation.force("center", d3.forceCenter(width / 2, height / 2));
     updateGraph();
 });
@@ -33,6 +34,32 @@ window.addEventListener("resize", function () {
 /***************************************
  * Zoom and Pan functionality
  ***************************************/
+d3.select("#zoom-level").on("input", function () {
+    const minLog = Math.log10(0.1); // -1
+    const maxLog = Math.log10(10);  // 1
+    const logValue = minLog + (this.value / 100) * (maxLog - minLog);
+    const newScale = Math.pow(10, logValue); // Neue Zoomstufe
+
+    // Aktuelle Transformation abrufen
+    const currentTransform = d3.zoomTransform(svg.node());
+
+    // Größe des Viewports bestimmen (Anzeigebereich des SVG)
+    const bbox = svg.node().getBoundingClientRect();
+    const viewportCenterX = bbox.width / 2;
+    const viewportCenterY = bbox.height / 2;
+
+    // Berechne neue Übersetzung, um das aktuelle Zentrum zu behalten
+    const newX = (viewportCenterX - currentTransform.x) / currentTransform.k * newScale;
+    const newY = (viewportCenterY - currentTransform.y) / currentTransform.k * newScale;
+
+    // Erstelle die neue Transformationsmatrix
+    const newTransform = d3.zoomIdentity
+        .translate(viewportCenterX - newX, viewportCenterY - newY)
+        .scale(newScale);
+
+    // Sofort anwenden
+    svg.call(zoom.transform, newTransform);
+});
 const zoom = d3.zoom()
     .scaleExtent([0.1, 10])
     .on("start", (event) => {
@@ -41,6 +68,10 @@ const zoom = d3.zoom()
         }
     })
     .on("zoom", (event) => {
+        const minLog = Math.log10(0.1);
+        const maxLog = Math.log10(10);
+        document.getElementById('zoom-level').value = ((Math.log10(event.transform.k) - minLog) / (maxLog - minLog)) * 100;
+        document.getElementById('zoom-text').innerText = Math.round(event.transform.k * 100) + "%";
         menu.style("display", "none");
         gMain.attr("transform", event.transform);
     })
