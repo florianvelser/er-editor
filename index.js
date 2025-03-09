@@ -6,11 +6,20 @@ const icons = import.meta.glob('/icons/*.svg', { eager: true, query: '?url', imp
  ***************************************/
 const STROKE_WIDTH = 0;
 const menu = d3.select("#context-menu");
+var projectname = "er_diagram";
+document.getElementById("projectname").innerHTML = projectname + ".json";
+document.getElementById("zoom-level").value = 50;
 
-const topOffset = document.querySelector(".menu-bar").offsetHeight;
+function setProjectname(name) {
+    projectname = name;
+    document.getElementById("projectname").innerText = projectname + ".json";
+}
+
+const topOffset = 36;
+const bottomOffset = 36;
 let svg = d3.select("svg")
     .attr("width", window.innerWidth)
-    .attr("height", window.innerHeight - topOffset);
+    .attr("height", document.documentElement.clientHeight - topOffset - bottomOffset);
 
 // Create a main group for pan and zoom
 const gMain = svg.append("g").attr("class", "gMain");
@@ -23,9 +32,9 @@ let width = +svg.attr("width"),
 
 window.addEventListener("resize", function () {
     svg.attr("width", window.innerWidth)
-        .attr("height", window.innerHeight - topOffset);
+        .attr("height", document.documentElement.clientHeight - topOffset - bottomOffset);
     width = window.innerWidth;
-    height = window.innerHeight - topOffset;
+    height = document.documentElement.clientHeight - topOffset - bottomOffset;
     simulation.force("center", d3.forceCenter(width / 2, height / 2));
     updateGraph();
 });
@@ -33,6 +42,60 @@ window.addEventListener("resize", function () {
 /***************************************
  * Zoom and Pan functionality
  ***************************************/
+function isContentFullyOutside() {
+    // Hole die Bounding Box des Inhalts
+    const bbox = getDiagramBBox();
+    // Aktuellen Zoom/Transform aus dem SVG holen
+    const transform = d3.zoomTransform(svg.node());
+
+    // Transformiere die Eckkoordinaten der Bounding Box
+    const x1 = transform.applyX(bbox.minX) + 20;
+    const y1 = transform.applyY(bbox.minY) + 20;
+    const x2 = transform.applyX(bbox.minX + bbox.width) - 20;
+    const y2 = transform.applyY(bbox.minY + bbox.height) - 20;
+
+    // Hole die Dimensionen des sichtbaren Bereichs (SVG)
+    const svgWidth = +svg.attr("width");
+    const svgHeight = +svg.attr("height");
+
+    // Überprüfe, ob die gesamte Box außerhalb des SVG liegt:
+    // - rechts vom Sichtbereich: x1 > svgWidth
+    // - links: x2 < 0
+    // - unten: y1 > svgHeight
+    // - oben: y2 < 0
+    if (x2 < 0 || x1 > svgWidth || y2 < 0 || y1 > svgHeight) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+d3.select("#zoom-level").on("input", function () {
+    const minLog = Math.log10(0.1); // -1
+    const maxLog = Math.log10(10);  // 1
+    const logValue = minLog + (this.value / 100) * (maxLog - minLog);
+    const newScale = Math.pow(10, logValue); // Neue Zoomstufe
+
+    // Aktuelle Transformation abrufen
+    const currentTransform = d3.zoomTransform(svg.node());
+
+    // Größe des Viewports bestimmen (Anzeigebereich des SVG)
+    const bbox = svg.node().getBoundingClientRect();
+    const viewportCenterX = bbox.width / 2;
+    const viewportCenterY = bbox.height / 2;
+
+    // Berechne neue Übersetzung, um das aktuelle Zentrum zu behalten
+    const newX = (viewportCenterX - currentTransform.x) / currentTransform.k * newScale;
+    const newY = (viewportCenterY - currentTransform.y) / currentTransform.k * newScale;
+
+    // Erstelle die neue Transformationsmatrix
+    const newTransform = d3.zoomIdentity
+        .translate(viewportCenterX - newX, viewportCenterY - newY)
+        .scale(newScale);
+
+    // Sofort anwenden
+    svg.call(zoom.transform, newTransform);
+});
 const zoom = d3.zoom()
     .scaleExtent([0.1, 10])
     .on("start", (event) => {
@@ -41,8 +104,17 @@ const zoom = d3.zoom()
         }
     })
     .on("zoom", (event) => {
+        const minLog = Math.log10(0.1);
+        const maxLog = Math.log10(10);
+        document.getElementById('zoom-level').value = ((Math.log10(event.transform.k) - minLog) / (maxLog - minLog)) * 100;
+        document.getElementById('zoom-text').innerText = Math.round(event.transform.k * 100) + "%";
         menu.style("display", "none");
         gMain.attr("transform", event.transform);
+        if(isContentFullyOutside()) {
+            document.getElementById('back-to-content').style.display = 'block';
+        } else {
+            document.getElementById('back-to-content').style.display = 'none';
+        }
     })
     .on("end", () => {
         svg.style("cursor", "grab");
@@ -92,6 +164,8 @@ function truncateString(str) {
 
 function showModal(options, callback) {
     // Options: type ('text' or 'select'), title, defaultValue, options (for select: Array of {value, text}), nodeType ('attribute', 'relationship', 'entity')
+
+    // Select modal elements and clear previous content
     const modal = d3.select("#modal");
     const modalTitle = d3.select("#modal-title")
         .text(options.title || "")
@@ -99,11 +173,13 @@ function showModal(options, callback) {
     const content = d3.select("#modal-content");
     content.html("");
 
+    let inputField; // Reference to the input element
     if (options.type === "text") {
-        // If a nodeType is specified, an SVG element with the corresponding shape is created.
+
         if (options.nodeType) {
-            // Remove bottom margin of the title if an SVG is shown
+            // Remove bottom margin of title when an SVG is displayed
             modalTitle.style("margin-bottom", "0");
+
             // Create an SVG container with fixed dimensions
             const svg = content.append("svg")
                 .attr("width", 260)
@@ -111,7 +187,7 @@ function showModal(options, callback) {
                 .style("border", "none");
 
             let defaultLabel = "";
-            // Determine shape and standard text depending on nodeType
+            // Draw a shape and set a default label based on nodeType
             switch (options.nodeType) {
                 case "attribute":
                     svg.append("ellipse")
@@ -150,7 +226,7 @@ function showModal(options, callback) {
                     break;
             }
 
-            // Add text to the SVG
+            // Append text to the SVG; uses truncateString() if available
             const svgText = svg.append("text")
                 .attr("x", 130)
                 .attr("y", 65)
@@ -159,27 +235,28 @@ function showModal(options, callback) {
                 .style("font-size", "14px")
                 .text(truncateString(options.defaultValue) || defaultLabel);
 
-            // Input field that auto updates the SVG text,
-            // now with a placeholder based on the nodeType
-            const inputField = content.append("input")
+            // Create input field with a placeholder based on the nodeType
+            inputField = content.append("input")
                 .attr("type", "text")
                 .attr("id", "modal-input")
                 .attr("value", options.defaultValue || "")
                 .attr("placeholder", defaultLabel);
 
+            // Update the SVG text as the user types
             inputField.on("input", function () {
-                const inputValue = inputField.node().value;
+                const inputValue = this.value;
                 svgText.text(truncateString(inputValue) || defaultLabel);
             });
         } else {
-            // Without nodeType, show only input field (no placeholder needed)
-            content.append("input")
+            // Create a simple input field if no nodeType is specified
+            inputField = content.append("input")
                 .attr("type", "text")
                 .attr("id", "modal-input")
                 .attr("value", options.defaultValue || "");
         }
+
     } else if (options.type === "select") {
-        // Create select options
+        // Create a select element with options
         const sel = content.append("select")
             .attr("id", "modal-select");
         sel.selectAll("option")
@@ -191,22 +268,30 @@ function showModal(options, callback) {
             .property("selected", d => d.value === options.defaultValue);
     }
 
-    // Show Modal
+    // Display the modal
     modal.style("display", "block");
 
+    if(inputField) {
+        inputField.node().focus();
+        inputField.node().setSelectionRange(-1, -1);
+    }
+
+    // OK button click handler: retrieve the input/selected value and close the modal
     d3.select("#modal-ok").on("click", function () {
-        let value = options.type === "text"
+        const value = options.type === "text"
             ? d3.select("#modal-input").property("value")
             : d3.select("#modal-select").property("value");
         modal.style("display", "none");
         callback(value);
     });
 
+    // Cancel button click handler: close the modal without returning a value
     d3.select("#modal-cancel").on("click", function () {
         modal.style("display", "none");
         callback(null);
     });
 }
+
 
 /***************************************
  * Force simulation and rendering
@@ -398,16 +483,29 @@ function adjustNodeSize(g, d) {
 /***************************************
  * Interactive functions (drag, edit)
  ***************************************/
+var drag_start = -1;
+var timeout = null;
 function dragstarted(event, d) {
+    drag_start = Date.now();
+    timeout = setTimeout(() => {
+        if (event.sourceEvent.touches) {
+            showContextMenu(event.sourceEvent, d);
+        }
+    }, 300);
     if (!event.active) simulation.alphaTarget(0.3).restart();
     d.fx = d.x;
     d.fy = d.y;
 }
 function dragged(event, d) {
+    menu.style("display", "none");
+    clearTimeout(timeout);
     d.fx = event.x;
     d.fy = event.y;
 }
 function dragended(event, d) {
+    if (Date.now() - drag_start < 500) {
+        clearTimeout(timeout);
+    }
     if (!event.active) simulation.alphaTarget(0);
     d.fx = null;
     d.fy = null;
@@ -467,8 +565,13 @@ function showContextMenu(event, d) {
         menuHTML += `<li id="cm-add-attribute-rel" style="background-image: url(&quot;${icons['/icons/plus.svg']}&quot;);">Add new attribute</li>`;
     }
     menuHTML += '</ul>';
+    var left = event.pageX;
+    console.log(event.pageX + parseInt(menu.style("width")));
+    if (event.pageX + parseInt(menu.style("width")) > window.innerWidth) {
+        left = event.pageX - parseInt(menu.style("width"));
+    }
     menu.html(menuHTML);
-    menu.style("left", event.pageX + "px")
+    menu.style("left", left + "px")
         .style("top", event.pageY + "px")
         .style("display", "block");
 
@@ -653,7 +756,7 @@ d3.select("#download-json").on("click", function () {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
     const dlAnchorElem = document.createElement('a');
     dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", "er_diagram.json");
+    dlAnchorElem.setAttribute("download", projectname + ".json");
     dlAnchorElem.click();
 });
 
@@ -662,6 +765,7 @@ d3.select("#upload-json-btn").on("click", function () {
 });
 
 d3.select("#diagram-new").on("click", function () {
+    setProjectname("er_diagram");
     config = {
         "nodes": [],
         "links": []
@@ -671,8 +775,22 @@ d3.select("#diagram-new").on("click", function () {
     updateGraph();
 });
 
+d3.select("#projectname").on("click", function () {
+    showModal({ type: "text", title: "Change projectname", defaultValue: projectname }, function (newText) {
+        setProjectname(newText);
+    });
+});
+
+function baseName(str) {
+   var base = new String(str).substring(str.lastIndexOf('/') + 1); 
+    if(base.lastIndexOf(".") != -1)       
+        base = base.substring(0, base.lastIndexOf("."));
+   return base;
+}
+
 d3.select("#upload-json").on("change", function () {
     const file = this.files[0];
+    setProjectname(baseName(file.name));
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function (e) {
@@ -736,7 +854,7 @@ function exportImage(format, quality) {
     clonedSvg.setAttribute('id', 'clonedSvg');
     document.body.appendChild(clonedSvg);
 
-    d3SvgToPng('#clonedSvg', 'name', {
+    d3SvgToPng('#clonedSvg', projectname, {
         scale: 3,
         format: format,
         quality: quality,
@@ -755,6 +873,32 @@ d3.select("#export-png").on("click", function () {
 d3.select("#export-webp").on("click", function () {
     exportImage('webp', 1);
 });
+
+d3.select("#back-to-content").on("click", function () {
+    fitToScreen();
+});
+
+d3.select("#fit-content").on("click", function () {
+    fitToScreen();
+});
+
+function fitToScreen() {
+    const bbox = getDiagramBBox();
+    const svgRect = svg.node().getBoundingClientRect();
+    
+    const scaleX = svgRect.width / bbox.width;
+    const scaleY = svgRect.height / bbox.height;
+    const scale = Math.max(0.1, Math.min(scaleX, scaleY, 1)); // Maximal 1-fache Skalierung
+    
+    const translateX = (svgRect.width - bbox.width * scale) / 2 - bbox.minX * scale;
+    const translateY = (svgRect.height - bbox.height * scale) / 2 - bbox.minY * scale;
+    
+    const transform = d3.zoomIdentity.translate(translateX, translateY).scale(scale);
+    
+    svg.transition()
+        .duration(750)
+        .call(zoom.transform, transform);
+}
 
 function getDiagramBBox() {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;

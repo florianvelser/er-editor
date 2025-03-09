@@ -4,6 +4,13 @@
     padding: 0;
     margin: 0;
     box-sizing: border-box;
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+     -khtml-user-select: none; /* Konqueror HTML */
+       -moz-user-select: none; /* Old versions of Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome, Edge, Opera and Firefox */
 }
 
 body {
@@ -25,6 +32,7 @@ button {
     border-radius: 3px;
     flex: 1;
     font-family: "Inter", sans-serif;
+    color: #000;
 }
 
 button:first-child {
@@ -208,4 +216,115 @@ body:has(#modal[style*="display: block"]) .background {
 }
 .menu-item:hover .dropdown {
     display: block;
+}
+.footer {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    height: 36px;
+}
+input[type=range] {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background: transparent; /* Hintergrund für Firefox entfernen */
+}
+
+input[type=range]:focus {
+    outline: none;
+}
+
+/* Webkit Browsers (Chrome, Safari, Edge) */
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    cursor: pointer;
+    background: #d4d4d4;
+    border-radius: 10px;
+    border: none;
+}
+
+input[type=range]::-webkit-slider-thumb {
+    height: 16px;
+    width: 6px;
+    border-radius: 3px;
+    background: #747474;
+    cursor: pointer;
+    -webkit-appearance: none;
+    margin-top: -6px;
+}
+
+/* Firefox */
+input[type=range]::-moz-range-track {
+    width: 100%;
+    height: 4px;
+    cursor: pointer;
+    background: #d4d4d4;
+    border-radius: 10px;
+    border: none;
+}
+
+input[type=range]::-moz-range-thumb {
+    height: 16px;
+    width: 6px;
+    border-radius: 3px;
+    background: #747474;
+    cursor: pointer;
+    border: none;
+}
+
+/* Internet Explorer */
+input[type=range]::-ms-track {
+    width: 100%;
+    height: 4px;
+    cursor: pointer;
+    background: transparent;
+    border-color: transparent;
+    color: transparent;
+}
+
+input[type=range]::-ms-fill-lower {
+    background: #d4d4d4;
+    border-radius: 10px;
+}
+
+input[type=range]::-ms-fill-upper {
+    background: #d4d4d4;
+    border-radius: 10px;
+}
+
+input[type=range]::-ms-thumb {
+    height: 16px;
+    width: 6px;
+    border-radius: 3px;
+    background: #747474;
+    cursor: pointer;
+}
+.footer .zoom {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto;
+    padding-right: 12px;
+}
+#zoom-text {
+    width: 46px;
+    text-align: center;
+    font-size: 14px;
+}
+#projectname {
+    padding: 0 12px;
+    line-height: 36px;
+    cursor: pointer;
+}
+
+#projectname:hover {
+    background-color: #e2e2e2;
+}
+#back-to-content {
+    position: absolute;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 5px;
 }
