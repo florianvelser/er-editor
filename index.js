@@ -7,8 +7,8 @@ const icons = import.meta.glob('/icons/*.svg', { eager: true, query: '?url', imp
 const STROKE_WIDTH = 0;
 const menu = d3.select("#context-menu");
 
-const topOffset = document.querySelector(".menu-bar").offsetHeight;
-const bottomOffset = document.querySelector(".footer").offsetHeight;
+const topOffset = 36;
+const bottomOffset = 36;
 let svg = d3.select("svg")
     .attr("width", window.innerWidth)
     .attr("height", document.documentElement.clientHeight - topOffset - bottomOffset);
@@ -429,16 +429,26 @@ function adjustNodeSize(g, d) {
 /***************************************
  * Interactive functions (drag, edit)
  ***************************************/
+var drag_start = -1;
+var timeout = null;
 function dragstarted(event, d) {
+    drag_start = Date.now();
+    timeout = setTimeout(() => {
+        showContextMenu(event.sourceEvent, d);
+    }, 300);
     if (!event.active) simulation.alphaTarget(0.3).restart();
     d.fx = d.x;
     d.fy = d.y;
 }
 function dragged(event, d) {
+    clearTimeout(timeout);
     d.fx = event.x;
     d.fy = event.y;
 }
 function dragended(event, d) {
+    if(Date.now() - drag_start < 500) {
+        clearTimeout(timeout);
+    }
     if (!event.active) simulation.alphaTarget(0);
     d.fx = null;
     d.fy = null;
