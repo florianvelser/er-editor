@@ -1,5 +1,78 @@
 import d3SvgToPng from 'd3-svg-to-png';
 const icons = import.meta.glob('/icons/*.svg', { eager: true, query: '?url', import: 'default' });
+/***************************************
+ * History Manager for Undo/Redo functionality
+ ***************************************/
+class HistoryManager {
+    constructor() {
+        this.undoStack = [];
+        this.redoStack = [];
+        // Cache DOM elements
+        this.undoButton = document.getElementById("undo-btn");
+        this.redoButton = document.getElementById("redo-btn");
+        this.updateButtons();
+    }
+
+    clear() {
+        this.undoStack.length = 0;
+        this.redoStack.length = 0;
+        this.updateButtons();
+    }
+
+    updateButtons() {
+        // Toggle "disabled" class based on stack lengths
+        this.undoButton.classList.toggle("disabled", this.undoStack.length === 0);
+        this.redoButton.classList.toggle("disabled", this.redoStack.length === 0);
+    }
+
+    // Save a snapshot of the current state. Clear the redo stack on new action.
+    save(state) {
+        // Deep copy the state
+        this.undoStack.push(JSON.parse(JSON.stringify(state)));
+        this.redoStack.length = 0;
+        this.updateButtons();
+    }
+
+    // Undo: push current state to redoStack and return the last state from undoStack
+    undo(currentState) {
+        if (this.undoStack.length === 0) return null;
+        // Deep copy current state before pushing to redoStack
+        this.redoStack.push(JSON.parse(JSON.stringify(currentState)));
+        const lastState = this.undoStack.pop();
+        this.updateButtons();
+        return lastState;
+    }
+
+    // Redo: push current state to undoStack and return the last state from redoStack
+    redo(currentState) {
+        if (this.redoStack.length === 0) return null;
+        this.undoStack.push(JSON.parse(JSON.stringify(currentState)));
+        const nextState = this.redoStack.pop();
+        this.updateButtons();
+        return nextState;
+    }
+}
+
+// Create a global history manager instance
+const historyManager = new HistoryManager();
+
+// Helper function to capture the current state (nodes and links)
+function getStateSnapshot() {
+    config.nodes = nodes.map(n => ({
+        id: n.id,
+        type: n.type,
+        text: n.text,
+        primary: n.primary,
+        x: n.x,
+        y: n.y
+    }));
+    config.links = links.map(l => ({
+        source: typeof l.source === "object" ? l.source.id : l.source,
+        target: typeof l.target === "object" ? l.target.id : l.target,
+        cardinality: l.cardinality
+    }));
+    return config;
+}
 
 /***************************************
  * Dynamic SVG size (full window width & height minus button area)
@@ -43,26 +116,25 @@ window.addEventListener("resize", function () {
  * Zoom and Pan functionality
  ***************************************/
 function isContentFullyOutside() {
-    // Hole die Bounding Box des Inhalts
+    if (config.nodes.length === 0) return false;
     const bbox = getDiagramBBox();
-    // Aktuellen Zoom/Transform aus dem SVG holen
     const transform = d3.zoomTransform(svg.node());
 
-    // Transformiere die Eckkoordinaten der Bounding Box
+    // Transform the bounding box coordinates
     const x1 = transform.applyX(bbox.minX) + 20;
     const y1 = transform.applyY(bbox.minY) + 20;
     const x2 = transform.applyX(bbox.minX + bbox.width) - 20;
     const y2 = transform.applyY(bbox.minY + bbox.height) - 20;
 
-    // Hole die Dimensionen des sichtbaren Bereichs (SVG)
+    // Get SVG dimensions
     const svgWidth = +svg.attr("width");
     const svgHeight = +svg.attr("height");
 
-    // Überprüfe, ob die gesamte Box außerhalb des SVG liegt:
-    // - rechts vom Sichtbereich: x1 > svgWidth
-    // - links: x2 < 0
-    // - unten: y1 > svgHeight
-    // - oben: y2 < 0
+    // Check if the entire box is outside the SVG
+    // - to the right of the viewing area: x1 > svgWidth
+    // - left: x2 < 0
+    // - bottom: y1 > svgHeight
+    // - top: y2 < 0
     if (x2 < 0 || x1 > svgWidth || y2 < 0 || y1 > svgHeight) {
         return true;
     } else {
@@ -76,26 +148,34 @@ d3.select("#zoom-level").on("input", function () {
     const logValue = minLog + (this.value / 100) * (maxLog - minLog);
     const newScale = Math.pow(10, logValue); // Neue Zoomstufe
 
-    // Aktuelle Transformation abrufen
+    // Retrieve current transformation
     const currentTransform = d3.zoomTransform(svg.node());
 
-    // Größe des Viewports bestimmen (Anzeigebereich des SVG)
+    // Determine the size of the viewport (display area of the SVG)
     const bbox = svg.node().getBoundingClientRect();
     const viewportCenterX = bbox.width / 2;
     const viewportCenterY = bbox.height / 2;
 
-    // Berechne neue Übersetzung, um das aktuelle Zentrum zu behalten
+    // Calculate new translation to keep the current centre
     const newX = (viewportCenterX - currentTransform.x) / currentTransform.k * newScale;
     const newY = (viewportCenterY - currentTransform.y) / currentTransform.k * newScale;
 
-    // Erstelle die neue Transformationsmatrix
+    // Create the new transformation matrix
     const newTransform = d3.zoomIdentity
         .translate(viewportCenterX - newX, viewportCenterY - newY)
         .scale(newScale);
 
-    // Sofort anwenden
     svg.call(zoom.transform, newTransform);
 });
+
+function updateButtonFitToContent() {
+    if (isContentFullyOutside()) {
+        document.getElementById('back-to-content').style.display = 'block';
+    } else {
+        document.getElementById('back-to-content').style.display = 'none';
+    }
+}
+
 const zoom = d3.zoom()
     .scaleExtent([0.1, 10])
     .on("start", (event) => {
@@ -110,11 +190,7 @@ const zoom = d3.zoom()
         document.getElementById('zoom-text').innerText = Math.round(event.transform.k * 100) + "%";
         menu.style("display", "none");
         gMain.attr("transform", event.transform);
-        if(isContentFullyOutside()) {
-            document.getElementById('back-to-content').style.display = 'block';
-        } else {
-            document.getElementById('back-to-content').style.display = 'none';
-        }
+        updateButtonFitToContent();
     })
     .on("end", () => {
         svg.style("cursor", "grab");
@@ -163,7 +239,8 @@ function truncateString(str) {
 }
 
 function showModal(options, callback) {
-    // Options: type ('text' or 'select'), title, defaultValue, options (for select: Array of {value, text}), nodeType ('attribute', 'relationship', 'entity')
+    // Options: type ('text', 'select', or 'confirm'), title, defaultValue, options (for select: Array of {value, text}),
+    // nodeType ('attribute', 'relationship', 'entity'), message (for confirm)
 
     // Select modal elements and clear previous content
     const modal = d3.select("#modal");
@@ -174,8 +251,8 @@ function showModal(options, callback) {
     content.html("");
 
     let inputField; // Reference to the input element
-    if (options.type === "text") {
 
+    if (options.type === "text") {
         if (options.nodeType) {
             // Remove bottom margin of title when an SVG is displayed
             modalTitle.style("margin-bottom", "0");
@@ -254,7 +331,6 @@ function showModal(options, callback) {
                 .attr("id", "modal-input")
                 .attr("value", options.defaultValue || "");
         }
-
     } else if (options.type === "select") {
         // Create a select element with options
         const sel = content.append("select")
@@ -266,29 +342,44 @@ function showModal(options, callback) {
             .attr("value", d => d.value)
             .text(d => d.text)
             .property("selected", d => d.value === options.defaultValue);
+    } else if (options.type === "confirm") {
+        // Create a confirmation prompt with the provided message
+        content.append("p")
+            .text(options.message || "Are you sure?");
     }
 
     // Display the modal
     modal.style("display", "block");
 
-    if(inputField) {
+    if (inputField) {
         inputField.node().focus();
         inputField.node().setSelectionRange(-1, -1);
     }
 
-    // OK button click handler: retrieve the input/selected value and close the modal
+    // OK button click handler: retrieve the input/selected value or return confirmation result
     d3.select("#modal-ok").on("click", function () {
-        const value = options.type === "text"
-            ? d3.select("#modal-input").property("value")
-            : d3.select("#modal-select").property("value");
+        let value;
+        if (options.type === "confirm") {
+            value = true;
+        } else if (options.type === "text") {
+            value = d3.select("#modal-input").property("value");
+        } else if (options.type === "select") {
+            value = d3.select("#modal-select").property("value");
+        }
         modal.style("display", "none");
         callback(value);
     });
 
-    // Cancel button click handler: close the modal without returning a value
+    // Cancel button click handler: close the modal and return appropriate value
     d3.select("#modal-cancel").on("click", function () {
+        let value;
+        if (options.type === "confirm") {
+            value = false;
+        } else {
+            value = null;
+        }
         modal.style("display", "none");
-        callback(null);
+        callback(value);
     });
 }
 
@@ -412,6 +503,7 @@ function updateGraph() {
     simulation.nodes(nodes);
     simulation.force("link").links(links);
     simulation.alpha(1).restart();
+    updateButtonFitToContent();
 }
 
 function ticked() {
@@ -516,6 +608,7 @@ function editText(event, d) {
     const currentG = d3.select(this);
     showModal({ type: "text", title: "Edit text", defaultValue: d.text, nodeType: d.type }, function (newText) {
         if (newText !== null && newText.trim() !== "") {
+            historyManager.save(getStateSnapshot());
             d.text = newText;
             currentG.select("text").text(newText);
             adjustNodeSize(currentG, d);
@@ -530,6 +623,7 @@ function editCardinality(event, d) {
     event.stopPropagation();
     showModal({ type: "select", title: "Edit cardinality", options: [{ value: '1', text: '1' }, { value: 'n', text: 'n' }, { value: 'm', text: 'm' }], defaultValue: d.cardinality }, function (newCard) {
         if (newCard !== null && newCard.trim() !== "") {
+            historyManager.save(getStateSnapshot());
             newCard = newCard.trim();
             if (newCard !== "1" && newCard.toLowerCase() !== "n" && newCard.toLowerCase() !== "m") {
                 alert("Invalid value! Please enter only 1, n or m.");
@@ -566,7 +660,6 @@ function showContextMenu(event, d) {
     }
     menuHTML += '</ul>';
     var left = event.pageX;
-    console.log(event.pageX + parseInt(menu.style("width")));
     if (event.pageX + parseInt(menu.style("width")) > window.innerWidth) {
         left = event.pageX - parseInt(menu.style("width"));
     }
@@ -577,6 +670,7 @@ function showContextMenu(event, d) {
 
     // Delete element (and for entities, also remove related attributes and relationships)
     d3.select("#cm-delete").on("click", function () {
+        historyManager.save(getStateSnapshot());
         if (currentContextNode.type === "entity") {
             let removeSet = new Set([currentContextNode.id]);
 
@@ -641,6 +735,7 @@ function showContextMenu(event, d) {
     d3.select("#cm-add-attribute").on("click", function () {
         showModal({ type: "text", title: "Add new attribute", defaultValue: "" }, function (attrText) {
             if (attrText && attrText.trim() !== "") {
+                historyManager.save(getStateSnapshot());
                 const newId = attrText + "_" + Date.now();
                 const newAttr = { id: newId, type: "attribute", text: attrText };
                 nodes.push(newAttr);
@@ -657,6 +752,7 @@ function showContextMenu(event, d) {
     d3.select("#cm-add-relationship").on("click", function () {
         showModal({ type: "text", title: "Name of the new relationship", defaultValue: "", nodeType: 'relationship' }, function (relText) {
             if (relText && relText.trim() !== "") {
+                historyManager.save(getStateSnapshot());
                 const validEntities = nodes.filter(n => n.type === "entity" && n.id !== currentContextNode.id)
                     .map(n => ({ value: n.id, text: n.id.substring(0, n.id.lastIndexOf('_')) }));
                 if (validEntities.length === 0) {
@@ -682,6 +778,7 @@ function showContextMenu(event, d) {
     });
     // Set as primary key (for attributes)
     d3.select("#cm-set-primary").on("click", function () {
+        historyManager.save(getStateSnapshot());
         const attributeNode = currentContextNode;
         // Find the parent entity
         const parentEntity = nodes.find(n =>
@@ -706,6 +803,7 @@ function showContextMenu(event, d) {
     d3.select("#cm-add-attribute-rel").on("click", function () {
         showModal({ type: "text", title: "Add new attribute for relationship", defaultValue: "" }, function (attrText) {
             if (attrText && attrText.trim() !== "") {
+                historyManager.save(getStateSnapshot());
                 const newId = attrText + "_" + Date.now();
                 const newAttr = { id: newId, type: "attribute", text: attrText };
                 nodes.push(newAttr);
@@ -724,12 +822,53 @@ d3.select("body").on("click", function () {
     d3.select("#context-menu").style("display", "none");
 });
 
+
+/***************************************
+ * Undo and Redo functions
+ ***************************************/
+function undo() {
+    const prevState = historyManager.undo(getStateSnapshot());
+    if (prevState) {
+        config = prevState;
+        nodes = config.nodes.slice();
+        links = config.links.slice();
+        nodes.forEach(n => {
+            if (typeof n.x !== "number" || typeof n.y !== "number") {
+                n.x = width / 2;
+                n.y = height / 2;
+            }
+        });
+        updateGraph();
+    }
+}
+
+function redo() {
+    const nextState = historyManager.redo(getStateSnapshot());
+    if (nextState) {
+        config = nextState;
+        nodes = config.nodes.slice();
+        links = config.links.slice();
+        nodes.forEach(n => {
+            if (typeof n.x !== "number" || typeof n.y !== "number") {
+                n.x = width / 2;
+                n.y = height / 2;
+            }
+        });
+        updateGraph();
+    }
+}
+
+// Attach undo/redo to buttons
+d3.select("#undo-btn").on("click", undo);
+d3.select("#redo-btn").on("click", redo);
+
 /***************************************
  * Button actions: Add new entity, JSON export/import, and reset view
  ***************************************/
 d3.select("#add-entity").on("click", function () {
     showModal({ type: "text", title: "Name of the new entity", defaultValue: "" }, function (entityName) {
         if (entityName && entityName.trim() !== "") {
+            historyManager.save(getStateSnapshot());
             const newId = entityName + "_" + Date.now();
             const newEntity = { id: newId, type: "entity", text: entityName, x: width / 2, y: height / 2 };
             nodes.push(newEntity);
@@ -765,14 +904,19 @@ d3.select("#upload-json-btn").on("click", function () {
 });
 
 d3.select("#diagram-new").on("click", function () {
-    setProjectname("er_diagram");
-    config = {
-        "nodes": [],
-        "links": []
-    };
-    nodes = config.nodes.slice();
-    links = config.links.slice();
-    updateGraph();
+    showModal({ type: "confirm", title: "New Document", message: "Are you sure you want to create a new document? Your current status will be overwritten and not saved. This action cannot be undone. Save your work before you continue." }, function (result) {
+        if(result) {
+            historyManager.clear();
+            setProjectname("er_diagram");
+            config = {
+                "nodes": [],
+                "links": []
+            };
+            nodes = config.nodes.slice();
+            links = config.links.slice();
+            updateGraph();
+        }
+    });
 });
 
 d3.select("#projectname").on("click", function () {
@@ -784,10 +928,10 @@ d3.select("#projectname").on("click", function () {
 });
 
 function baseName(str) {
-   var base = new String(str).substring(str.lastIndexOf('/') + 1); 
-    if(base.lastIndexOf(".") != -1)       
+    var base = new String(str).substring(str.lastIndexOf('/') + 1);
+    if (base.lastIndexOf(".") != -1)
         base = base.substring(0, base.lastIndexOf("."));
-   return base;
+    return base;
 }
 
 d3.select("#upload-json").on("change", function () {
@@ -885,18 +1029,19 @@ d3.select("#fit-content").on("click", function () {
 });
 
 function fitToScreen() {
+    if (config.nodes.length === 0) return;
     const bbox = getDiagramBBox();
     const svgRect = svg.node().getBoundingClientRect();
-    
+
     const scaleX = svgRect.width / bbox.width;
     const scaleY = svgRect.height / bbox.height;
-    const scale = Math.max(0.1, Math.min(scaleX, scaleY, 1)); // Maximal 1-fache Skalierung
-    
+    const scale = Math.max(0.1, Math.min(scaleX, scaleY, 1)); // Maximum 1x scaling
+
     const translateX = (svgRect.width - bbox.width * scale) / 2 - bbox.minX * scale;
     const translateY = (svgRect.height - bbox.height * scale) / 2 - bbox.minY * scale;
-    
+
     const transform = d3.zoomIdentity.translate(translateX, translateY).scale(scale);
-    
+
     svg.transition()
         .duration(750)
         .call(zoom.transform, transform);

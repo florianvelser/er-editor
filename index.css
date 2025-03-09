@@ -35,6 +35,10 @@ button {
     color: #000;
 }
 
+select {
+    color: #000;
+}
+
 button:first-child {
     background-color: hsl(147, 50%, 50%);
     color: #fff;
@@ -210,6 +214,10 @@ body:has(#modal[style*="display: block"]) .background {
     background-position: 15px center;
     padding-left: 50px;
     white-space: nowrap;
+}
+.dropdown a.disabled {
+    opacity: 0.4;
+    pointer-events: none;
 }
 .dropdown a:hover {
     background-color: #ddd;
