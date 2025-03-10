@@ -387,16 +387,27 @@ function showModal(options, callback) {
 /***************************************
  * Force simulation and rendering
  ***************************************/
+function calculateDistanceNodes(node1, node2) {
+    let dx = node2.x - node1.x;
+    let dy = node2.y - node1.y;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function calculateDistance(node) {
+    // console.log(node.source)
+    const anchor = computeAnchor(node.source, node.target, 7);
+    const anchor2 = computeAnchor(node.target, node.source, 7);
+    return calculateDistanceNodes(node.source, anchor) + calculateDistanceNodes(anchor2, node.target) + 50;
+    // console.log();
+}
 const simulation = d3.forceSimulation(nodes)
     .force("link", d3.forceLink(links)
         .id(d => d.id)
         .distance(d => {
-            // Increase distance if a relationship node is involved
-            if (d.source.type === "relationship" || d.target.type === "relationship") return 180;
-            return 150;
+            return calculateDistance(d)
         })
     )
-    .force("charge", d3.forceManyBody().strength(-400))
+    .force("charge", d3.forceManyBody().strength(-500))
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force("collide", d3.forceCollide().radius(d => {
         if (d.type === "entity") return 70;
@@ -405,6 +416,10 @@ const simulation = d3.forceSimulation(nodes)
         return 50;
     }))
     .on("tick", ticked);
+
+setInterval(() => {
+    simulation.force("link").distance(d => calculateDistance(d));
+}, 1000 / 128);
 
 let link, linkText, node;
 
@@ -506,32 +521,90 @@ function updateGraph() {
     updateButtonFitToContent();
 }
 
+// Calculates the anchor point of a node in the direction of another node
+function computeAnchor(node, other, gap) {
+    let dx = other.x - node.x;
+    let dy = other.y - node.y;
+    let angle = Math.atan2(dy, dx);
+    let unitX = Math.cos(angle);
+    let unitY = Math.sin(angle);
+    let t = 0;
+
+    if (node.type === "entity") {
+        // Rectangle: Assumption: d.width was set, height is constant 60
+        let halfWidth = node.width / 2;
+        let halfHeight = 30;
+        if (Math.abs(unitX) > 1e-6 && Math.abs(unitY) > 1e-6) {
+            t = Math.min(halfWidth / Math.abs(unitX), halfHeight / Math.abs(unitY));
+        } else if (Math.abs(unitX) > 1e-6) {
+            t = halfWidth / Math.abs(unitX);
+        } else {
+            t = halfHeight / Math.abs(unitY);
+        }
+    } else if (node.type === "attribute") {
+        // Ellipse: d.rx has been adjusted, ry remains 25
+        let rx = node.rx;
+        let ry = 25;
+        // Formula for ellipse intersection
+        t = 1 / Math.sqrt((unitX * unitX) / (rx * rx) + (unitY * unitY) / (ry * ry));
+    } else if (node.type === "relationship") {
+        // Polygon (diamond): The shape is drawn as a polygon
+        // Assumption: d.width and d.height have been set; the centre point is in (0,0)
+        let halfWidth = node.width / 2;
+        let halfHeight = node.height / 2;
+        // Edge of the diamond fulfils |x|/(w/2) + |y|/(h/2) = 1
+        t = 1 / ((Math.abs(unitX) / halfWidth) + (Math.abs(unitY) / halfHeight));
+    } else {
+        // Fallback - e.g. circle with radius 50
+        t = 50;
+    }
+
+    // The anchor point is t+gap away from the centre point in the direction of the other node
+    return { x: node.x + (t + gap) * unitX, y: node.y + (t + gap) * unitY };
+}
+
 function ticked() {
-    // Update link paths
+    // Calculate the anchor points for each link and save them
+    links.forEach(function (d) {
+        d.sourceAnchor = computeAnchor(d.source, d.target, 7);
+        d.targetAnchor = computeAnchor(d.target, d.source, 7);
+    });
+
+    // Aktualisiere den Pfad (Link) anhand der berechneten Ankerpunkte
     link.attr("d", function (d) {
-        let sx = d.source.x, sy = d.source.y, tx = d.target.x, ty = d.target.y;
         if (d.cardinality) {
-            // Calculate gap for the cardinality label
-            let mx = (sx + tx) / 2, my = (sy + ty) / 2;
-            let dx = tx - sx, dy = ty - sy;
+            // Calculate the centre point between the anchor points
+            let mx = (d.sourceAnchor.x + d.targetAnchor.x) / 2;
+            let my = (d.sourceAnchor.y + d.targetAnchor.y) / 2;
+            // For the small gap at the centre line
+            let dx = d.targetAnchor.x - d.sourceAnchor.x;
+            let dy = d.targetAnchor.y - d.sourceAnchor.y;
             let angle = Math.atan2(dy, dx);
             let gap = 20, gapHalf = gap / 2;
             let gx1 = mx - gapHalf * Math.cos(angle);
             let gy1 = my - gapHalf * Math.sin(angle);
             let gx2 = mx + gapHalf * Math.cos(angle);
             let gy2 = my + gapHalf * Math.sin(angle);
-            return "M" + sx + "," + sy + " L" + gx1 + "," + gy1 + " M" + gx2 + "," + gy2 + " L" + tx + "," + ty;
+            return "M" + d.sourceAnchor.x + "," + d.sourceAnchor.y +
+                " L" + gx1 + "," + gy1 +
+                " M" + gx2 + "," + gy2 +
+                " L" + d.targetAnchor.x + "," + d.targetAnchor.y;
         } else {
-            return "M" + sx + "," + sy + " L" + tx + "," + ty;
+            return "M" + d.sourceAnchor.x + "," + d.sourceAnchor.y +
+                " L" + d.targetAnchor.x + "," + d.targetAnchor.y;
         }
     });
-    // Update node positions
+
+    // Update the position of the nodes
     node.attr("transform", d => `translate(${d.x},${d.y})`);
-    // Position cardinality labels at the center of links
+
+    // Position the cardinality texts in the centre of the calculated anchor points
     linkText
-        .attr("x", d => (d.source.x + d.target.x) / 2)
-        .attr("y", d => (d.source.y + d.target.y) / 2);
+        .attr("x", d => (d.sourceAnchor.x + d.targetAnchor.x) / 2)
+        .attr("y", d => (d.sourceAnchor.y + d.targetAnchor.y) / 2);
 }
+
+
 
 /***************************************
  * Node size and font customization
@@ -905,7 +978,7 @@ d3.select("#upload-json-btn").on("click", function () {
 
 d3.select("#diagram-new").on("click", function () {
     showModal({ type: "confirm", title: "New Document", message: "Are you sure you want to create a new document? Your current status will be overwritten and not saved. This action cannot be undone. Save your work before you continue." }, function (result) {
-        if(result) {
+        if (result) {
             historyManager.clear();
             setProjectname("er_diagram");
             config = {
@@ -943,6 +1016,14 @@ d3.select("#upload-json").on("change", function () {
         try {
             const json = JSON.parse(e.target.result);
             if (json.nodes && json.links) {
+                historyManager.clear();
+                config = {
+                    "nodes": [],
+                    "links": []
+                };
+                nodes = config.nodes.slice();
+                links = config.links.slice();
+                updateGraph();
                 config = json;
                 nodes = config.nodes.slice();
                 links = config.links.slice();
