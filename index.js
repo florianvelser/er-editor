@@ -387,16 +387,27 @@ function showModal(options, callback) {
 /***************************************
  * Force simulation and rendering
  ***************************************/
+function calculateDistanceNodes(node1, node2) {
+    let dx = node2.x - node1.x;
+    let dy = node2.y - node1.y;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function calculateDistance(node) {
+    // console.log(node.source)
+    const anchor = computeAnchor(node.source, node.target, 7);
+    const anchor2 = computeAnchor(node.target, node.source, 7);
+    return calculateDistanceNodes(node.source, anchor) + calculateDistanceNodes(anchor2, node.target) + 50;
+    // console.log();
+}
 const simulation = d3.forceSimulation(nodes)
     .force("link", d3.forceLink(links)
         .id(d => d.id)
         .distance(d => {
-            // Increase distance if a relationship node is involved
-            if (d.source.type === "relationship" || d.target.type === "relationship") return 180;
-            return 150;
+            return calculateDistance(d)
         })
     )
-    .force("charge", d3.forceManyBody().strength(-400))
+    .force("charge", d3.forceManyBody().strength(-500))
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force("collide", d3.forceCollide().radius(d => {
         if (d.type === "entity") return 70;
@@ -405,6 +416,10 @@ const simulation = d3.forceSimulation(nodes)
         return 50;
     }))
     .on("tick", ticked);
+
+setInterval(() => {
+    simulation.force("link").distance(d => calculateDistance(d));
+}, 1000 / 128);
 
 let link, linkText, node;
 
@@ -551,8 +566,8 @@ function computeAnchor(node, other, gap) {
 function ticked() {
     // Calculate the anchor points for each link and save them
     links.forEach(function (d) {
-        d.sourceAnchor = computeAnchor(d.source, d.target, 10);
-        d.targetAnchor = computeAnchor(d.target, d.source, 10);
+        d.sourceAnchor = computeAnchor(d.source, d.target, 7);
+        d.targetAnchor = computeAnchor(d.target, d.source, 7);
     });
 
     // Aktualisiere den Pfad (Link) anhand der berechneten Ankerpunkte
@@ -1001,6 +1016,14 @@ d3.select("#upload-json").on("change", function () {
         try {
             const json = JSON.parse(e.target.result);
             if (json.nodes && json.links) {
+                historyManager.clear();
+                config = {
+                    "nodes": [],
+                    "links": []
+                };
+                nodes = config.nodes.slice();
+                links = config.links.slice();
+                updateGraph();
                 config = json;
                 nodes = config.nodes.slice();
                 links = config.links.slice();
