@@ -414,7 +414,7 @@ const simulation = d3.forceSimulation(nodes)
         if (d.type === "attribute") return 50;
         if (d.type === "relationship") return 50;
         return 50;
-    }))
+    }).iterations(2))
     .on("tick", ticked);
 
 setInterval(() => {
@@ -902,6 +902,13 @@ d3.select("body").on("click", function () {
 function undo() {
     const prevState = historyManager.undo(getStateSnapshot());
     if (prevState) {
+        config = {
+            "nodes": [],
+            "links": []
+        };
+        nodes = config.nodes.slice();
+        links = config.links.slice();
+        updateGraph();
         config = prevState;
         nodes = config.nodes.slice();
         links = config.links.slice();
@@ -918,6 +925,13 @@ function undo() {
 function redo() {
     const nextState = historyManager.redo(getStateSnapshot());
     if (nextState) {
+        config = {
+            "nodes": [],
+            "links": []
+        };
+        nodes = config.nodes.slice();
+        links = config.links.slice();
+        updateGraph();
         config = nextState;
         nodes = config.nodes.slice();
         links = config.links.slice();
