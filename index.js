@@ -1115,6 +1115,10 @@ d3.select("#export-webp").on("click", function () {
     exportImage('webp', 1);
 });
 
+d3.select("#export-jpeg").on("click", function () {
+    exportImage('jpeg', 1);
+});
+
 d3.select("#back-to-content").on("click", function () {
     fitToScreen();
 });
