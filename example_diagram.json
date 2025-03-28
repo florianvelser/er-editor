@@ -1,0 +1,70 @@
+{
+    "nodes": [
+        {
+            "id": "bad9ff34-73d2-4670-aa1e-70b59e2e9170",
+            "type": "entity",
+            "text": "Entity",
+            "x": 1191.861041096364,
+            "y": 318.07263332231696
+        },
+        {
+            "id": "14a380cc-d050-4f01-be12-b0c46351f11a",
+            "type": "entity",
+            "text": "Entity",
+            "x": 848.1243655796197,
+            "y": 450.32481301004805
+        },
+        {
+            "id": "ea2ecc23-07e9-46a5-8e6b-9e91db0d78ad",
+            "type": "relationship",
+            "text": "Relation",
+            "x": 965.4674392612612,
+            "y": 306.3775187340302
+        },
+        {
+            "id": "a361fa2e-b497-4e7b-90bc-ba0d4689a0cc",
+            "type": "attribute",
+            "text": "Attribute",
+            "x": 810.9789010296827,
+            "y": 616.6203094705235
+        },
+        {
+            "id": "3fb6b16f-e11b-4de3-9096-00f46bfeb89a",
+            "type": "attribute",
+            "text": "Attribute",
+            "x": 1312.1239918323806,
+            "y": 457.4672805869271
+        },
+        {
+            "id": "c3c2da63-5a45-43b1-9520-8bd7f8383392",
+            "type": "attribute",
+            "text": "Attribute",
+            "x": 631.4443120617276,
+            "y": 500.13724252083745
+        }
+    ],
+    "links": [
+        {
+            "source": "14a380cc-d050-4f01-be12-b0c46351f11a",
+            "target": "ea2ecc23-07e9-46a5-8e6b-9e91db0d78ad",
+            "cardinality": "1"
+        },
+        {
+            "source": "ea2ecc23-07e9-46a5-8e6b-9e91db0d78ad",
+            "target": "bad9ff34-73d2-4670-aa1e-70b59e2e9170",
+            "cardinality": "n"
+        },
+        {
+            "source": "14a380cc-d050-4f01-be12-b0c46351f11a",
+            "target": "a361fa2e-b497-4e7b-90bc-ba0d4689a0cc"
+        },
+        {
+            "source": "bad9ff34-73d2-4670-aa1e-70b59e2e9170",
+            "target": "3fb6b16f-e11b-4de3-9096-00f46bfeb89a"
+        },
+        {
+            "source": "14a380cc-d050-4f01-be12-b0c46351f11a",
+            "target": "c3c2da63-5a45-43b1-9520-8bd7f8383392"
+        }
+    ]
+}

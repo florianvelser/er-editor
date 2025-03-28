@@ -1,5 +1,6 @@
 import d3SvgToPng from 'd3-svg-to-png';
 import {v4 as uuidv4} from 'uuid';
+import exampleDiagram from './example_diagram.json' assert { type: 'json' };
 const icons = import.meta.glob('/icons/*.svg', { eager: true, query: '?url', import: 'default' });
 /***************************************
  * History Manager for Undo/Redo functionality
@@ -204,25 +205,7 @@ svg.call(zoom);
 /***************************************
  * Initial configuration (JSON)
  ***************************************/
-let config = {
-    "nodes": [
-        { "id": "Entity_1741374044081", "type": "entity", "text": "Entity" },
-        { "id": "Entity_1741374049158", "type": "entity", "text": "Entity" },
-        { "id": "Relation_1741374062200", "type": "relationship", "text": "Relation" },
-        { "id": "Attribut_1741374067971", "type": "attribute", "text": "Attribute" },
-        { "id": "Attribut_1741374073140", "type": "attribute", "text": "Attribute" },
-        { "id": "Attribute_1741374083026", "type": "attribute", "text": "Attribute" },
-        { "id": "Attribute_1741374090093", "type": "attribute", "text": "Attribute" }
-    ],
-    "links": [
-        { "source": "Entity_1741374049158", "target": "Relation_1741374062200", "cardinality": "1" },
-        { "source": "Relation_1741374062200", "target": "Entity_1741374044081", "cardinality": "n" },
-        { "source": "Entity_1741374049158", "target": "Attribut_1741374067971" },
-        { "source": "Entity_1741374049158", "target": "Attribut_1741374073140" },
-        { "source": "Entity_1741374044081", "target": "Attribute_1741374083026" },
-        { "source": "Entity_1741374044081", "target": "Attribute_1741374090093" }
-    ]
-};
+let config = exampleDiagram;
 
 let nodes = config.nodes.slice();
 let links = config.links.slice();
@@ -407,8 +390,8 @@ const simulation = d3.forceSimulation(nodes)
         .distance(d => {
             return calculateDistance(d)
         })
-        // .strength(2)
     )
+    .force("charge", d3.forceManyBody().strength(-10))
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force("collide", d3.forceCollide().radius(d => {
         if (d.type === "entity") return 70;
@@ -416,7 +399,6 @@ const simulation = d3.forceSimulation(nodes)
         if (d.type === "relationship") return 50;
         return 50;
     }).iterations(2))
-    .force("charge", d3.forceManyBody().strength(-10))
     .on("tick", ticked);
 
 setInterval(() => {
