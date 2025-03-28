@@ -1,4 +1,6 @@
 import d3SvgToPng from 'd3-svg-to-png';
+import {v4 as uuidv4} from 'uuid';
+import exampleDiagram from './example_diagram.json' assert { type: 'json' };
 const icons = import.meta.glob('/icons/*.svg', { eager: true, query: '?url', import: 'default' });
 /***************************************
  * History Manager for Undo/Redo functionality
@@ -203,25 +205,7 @@ svg.call(zoom);
 /***************************************
  * Initial configuration (JSON)
  ***************************************/
-let config = {
-    "nodes": [
-        { "id": "Entity_1741374044081", "type": "entity", "text": "Entity" },
-        { "id": "Entity_1741374049158", "type": "entity", "text": "Entity" },
-        { "id": "Relation_1741374062200", "type": "relationship", "text": "Relation" },
-        { "id": "Attribut_1741374067971", "type": "attribute", "text": "Attribute" },
-        { "id": "Attribut_1741374073140", "type": "attribute", "text": "Attribute" },
-        { "id": "Attribute_1741374083026", "type": "attribute", "text": "Attribute" },
-        { "id": "Attribute_1741374090093", "type": "attribute", "text": "Attribute" }
-    ],
-    "links": [
-        { "source": "Entity_1741374049158", "target": "Relation_1741374062200", "cardinality": "1" },
-        { "source": "Relation_1741374062200", "target": "Entity_1741374044081", "cardinality": "n" },
-        { "source": "Entity_1741374049158", "target": "Attribut_1741374067971" },
-        { "source": "Entity_1741374049158", "target": "Attribut_1741374073140" },
-        { "source": "Entity_1741374044081", "target": "Attribute_1741374083026" },
-        { "source": "Entity_1741374044081", "target": "Attribute_1741374090093" }
-    ]
-};
+let config = exampleDiagram;
 
 let nodes = config.nodes.slice();
 let links = config.links.slice();
@@ -397,7 +381,7 @@ function calculateDistance(node) {
     // console.log(node.source)
     const anchor = computeAnchor(node.source, node.target, 7);
     const anchor2 = computeAnchor(node.target, node.source, 7);
-    return calculateDistanceNodes(node.source, anchor) + calculateDistanceNodes(anchor2, node.target) + 50;
+    return calculateDistanceNodes(node.source, anchor) + calculateDistanceNodes(anchor2, node.target) + 100;
     // console.log();
 }
 const simulation = d3.forceSimulation(nodes)
@@ -407,7 +391,7 @@ const simulation = d3.forceSimulation(nodes)
             return calculateDistance(d)
         })
     )
-    .force("charge", d3.forceManyBody().strength(-500))
+    .force("charge", d3.forceManyBody().strength(-10))
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force("collide", d3.forceCollide().radius(d => {
         if (d.type === "entity") return 70;
@@ -809,7 +793,7 @@ function showContextMenu(event, d) {
         showModal({ type: "text", title: "Add new attribute", defaultValue: "" }, function (attrText) {
             if (attrText && attrText.trim() !== "") {
                 historyManager.save(getStateSnapshot());
-                const newId = attrText + "_" + Date.now();
+                const newId = uuidv4();
                 const newAttr = { id: newId, type: "attribute", text: attrText };
                 nodes.push(newAttr);
                 config.nodes.push(newAttr);
@@ -827,14 +811,14 @@ function showContextMenu(event, d) {
             if (relText && relText.trim() !== "") {
                 historyManager.save(getStateSnapshot());
                 const validEntities = nodes.filter(n => n.type === "entity" && n.id !== currentContextNode.id)
-                    .map(n => ({ value: n.id, text: n.id.substring(0, n.id.lastIndexOf('_')) }));
+                    .map(n => ({ value: n.id, text: n.text }));
                 if (validEntities.length === 0) {
                     alert("No other entity available.");
                     return;
                 }
                 showModal({ type: "select", title: "Select target entity", options: validEntities }, function (targetEntity) {
                     if (targetEntity) {
-                        const newRelId = relText + "_" + Date.now();
+                        const newRelId = uuidv4();
                         const newRel = { id: newRelId, type: "relationship", text: relText };
                         nodes.push(newRel);
                         config.nodes.push(newRel);
@@ -877,7 +861,7 @@ function showContextMenu(event, d) {
         showModal({ type: "text", title: "Add new attribute for relationship", defaultValue: "" }, function (attrText) {
             if (attrText && attrText.trim() !== "") {
                 historyManager.save(getStateSnapshot());
-                const newId = attrText + "_" + Date.now();
+                const newId = uuidv4();
                 const newAttr = { id: newId, type: "attribute", text: attrText };
                 nodes.push(newAttr);
                 config.nodes.push(newAttr);
@@ -956,7 +940,7 @@ d3.select("#add-entity").on("click", function () {
     showModal({ type: "text", title: "Name of the new entity", defaultValue: "" }, function (entityName) {
         if (entityName && entityName.trim() !== "") {
             historyManager.save(getStateSnapshot());
-            const newId = entityName + "_" + Date.now();
+            const newId = uuidv4();
             const newEntity = { id: newId, type: "entity", text: entityName, x: width / 2, y: height / 2 };
             nodes.push(newEntity);
             config.nodes.push(newEntity);
