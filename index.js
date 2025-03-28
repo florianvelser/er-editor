@@ -1,4 +1,5 @@
 import d3SvgToPng from 'd3-svg-to-png';
+import {v4 as uuidv4} from 'uuid';
 const icons = import.meta.glob('/icons/*.svg', { eager: true, query: '?url', import: 'default' });
 /***************************************
  * History Manager for Undo/Redo functionality
@@ -810,7 +811,7 @@ function showContextMenu(event, d) {
         showModal({ type: "text", title: "Add new attribute", defaultValue: "" }, function (attrText) {
             if (attrText && attrText.trim() !== "") {
                 historyManager.save(getStateSnapshot());
-                const newId = attrText + "_" + Date.now();
+                const newId = uuidv4();
                 const newAttr = { id: newId, type: "attribute", text: attrText };
                 nodes.push(newAttr);
                 config.nodes.push(newAttr);
@@ -835,7 +836,7 @@ function showContextMenu(event, d) {
                 }
                 showModal({ type: "select", title: "Select target entity", options: validEntities }, function (targetEntity) {
                     if (targetEntity) {
-                        const newRelId = relText + "_" + Date.now();
+                        const newRelId = uuidv4();
                         const newRel = { id: newRelId, type: "relationship", text: relText };
                         nodes.push(newRel);
                         config.nodes.push(newRel);
@@ -878,7 +879,7 @@ function showContextMenu(event, d) {
         showModal({ type: "text", title: "Add new attribute for relationship", defaultValue: "" }, function (attrText) {
             if (attrText && attrText.trim() !== "") {
                 historyManager.save(getStateSnapshot());
-                const newId = attrText + "_" + Date.now();
+                const newId = uuidv4();
                 const newAttr = { id: newId, type: "attribute", text: attrText };
                 nodes.push(newAttr);
                 config.nodes.push(newAttr);
@@ -957,7 +958,7 @@ d3.select("#add-entity").on("click", function () {
     showModal({ type: "text", title: "Name of the new entity", defaultValue: "" }, function (entityName) {
         if (entityName && entityName.trim() !== "") {
             historyManager.save(getStateSnapshot());
-            const newId = entityName + "_" + Date.now();
+            const newId = uuidv4();
             const newEntity = { id: newId, type: "entity", text: entityName, x: width / 2, y: height / 2 };
             nodes.push(newEntity);
             config.nodes.push(newEntity);
