@@ -397,7 +397,7 @@ function calculateDistance(node) {
     // console.log(node.source)
     const anchor = computeAnchor(node.source, node.target, 7);
     const anchor2 = computeAnchor(node.target, node.source, 7);
-    return calculateDistanceNodes(node.source, anchor) + calculateDistanceNodes(anchor2, node.target) + 50;
+    return calculateDistanceNodes(node.source, anchor) + calculateDistanceNodes(anchor2, node.target) + 100;
     // console.log();
 }
 const simulation = d3.forceSimulation(nodes)
@@ -406,8 +406,8 @@ const simulation = d3.forceSimulation(nodes)
         .distance(d => {
             return calculateDistance(d)
         })
+        // .strength(2)
     )
-    .force("charge", d3.forceManyBody().strength(-500))
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force("collide", d3.forceCollide().radius(d => {
         if (d.type === "entity") return 70;
@@ -415,6 +415,7 @@ const simulation = d3.forceSimulation(nodes)
         if (d.type === "relationship") return 50;
         return 50;
     }).iterations(2))
+    .force("charge", d3.forceManyBody().strength(-10))
     .on("tick", ticked);
 
 setInterval(() => {
@@ -827,7 +828,7 @@ function showContextMenu(event, d) {
             if (relText && relText.trim() !== "") {
                 historyManager.save(getStateSnapshot());
                 const validEntities = nodes.filter(n => n.type === "entity" && n.id !== currentContextNode.id)
-                    .map(n => ({ value: n.id, text: n.id.substring(0, n.id.lastIndexOf('_')) }));
+                    .map(n => ({ value: n.id, text: n.text }));
                 if (validEntities.length === 0) {
                     alert("No other entity available.");
                     return;
