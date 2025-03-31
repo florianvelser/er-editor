@@ -3,13 +3,14 @@
     "vite": "^6.2.1"
   },
   "dependencies": {
+    "d3": "^7.9.0",
     "d3-svg-to-png": "^0.3.2",
     "express": "^4.21.2",
     "uuid": "^11.1.0"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "vite src",
+    "build": "vite build src --outDir ../dist --emptyOutDir",
+    "preview": "vite preview src"
   }
 }
