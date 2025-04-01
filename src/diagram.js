@@ -15,6 +15,7 @@ export class ERDiagram {
             .attr('width', width)
             .attr('height', height);
         this.historyManager = new HistoryManager();
+        this.onZoom = null
         this.nodes = [];
         this.links = [];
         this.initializeSVG();
@@ -54,11 +55,44 @@ export class ERDiagram {
             })
             .on('zoom', (event) => {
                 this.gMain.attr('transform', event.transform);
+                if (this.onZoom && typeof this.onZoom === 'function') {
+                    this.onZoom(event.transform.k);
+                }
             })
             .on("end", () => {
                 this.svg.style("cursor", "grab");
             });
         this.svg.call(this.zoom);
+    }
+
+
+    /**
+     * Set the zoom percentage (0 - 100)
+     */
+    setZoom(percentage) {
+        const minLog = Math.log10(0.1); // -1
+        const maxLog = Math.log10(10);  // 1
+        const logValue = minLog + (percentage / 100) * (maxLog - minLog);
+        const newScale = Math.pow(10, logValue); // Neue Zoomstufe
+
+        // Retrieve current transformation
+        const currentTransform = d3.zoomTransform(this.svg.node());
+
+        // Determine the size of the viewport (display area of the SVG)
+        const bbox = this.svg.node().getBoundingClientRect();
+        const viewportCenterX = bbox.width / 2;
+        const viewportCenterY = bbox.height / 2;
+
+        // Calculate new translation to keep the current centre
+        const newX = (viewportCenterX - currentTransform.x) / currentTransform.k * newScale;
+        const newY = (viewportCenterY - currentTransform.y) / currentTransform.k * newScale;
+
+        // Create the new transformation matrix
+        const newTransform = d3.zoomIdentity
+            .translate(viewportCenterX - newX, viewportCenterY - newY)
+            .scale(newScale);
+
+        this.svg.call(this.zoom.transform, newTransform);
     }
 
     /**
