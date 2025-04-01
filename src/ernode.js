@@ -11,8 +11,22 @@ export class ERNode {
         if (typeof this.y !== 'number') {
             this.y = Math.random() * diagramHeight;
         }
-        // Callback for updating text in the diagram config.
-        this.onTextChange = config.onTextChange || null;
+        // Set default dimensions depending on type.
+        switch(this.type) {
+            case "entity":
+                if (typeof this.width !== 'number') this.width = 120;
+                break;
+            case "attribute":
+                if (typeof this.rx !== 'number') this.rx = 50;
+                break;
+            case "relationship":
+                if (typeof this.width !== 'number') this.width = 100;
+                if (typeof this.height !== 'number') this.height = 60;
+                break;
+            default:
+                // Fallback-Werte, falls nötig.
+                break;
+        }
     }
 
     /**
@@ -155,10 +169,6 @@ export class ERNode {
         // If text is unchanged, do not trigger a size update.
         if (newText === this._originalText) return;
         this.text = newText;
-        // Notify the parent diagram to update the config.
-        if (this.onTextChange && typeof this.onTextChange === 'function') {
-            this.onTextChange(this);
-        }
         // Adjust the node size after text change.
         const parentGroup = d3.select(node.parentNode.parentNode);
         this.adjustSize(parentGroup);
