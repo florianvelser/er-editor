@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import d3SvgToPng from 'd3-svg-to-png';
 import { v4 as uuidv4 } from 'uuid';
 import example_config from './diagram_exampleconfig.json';
+import { JsonFileHandler } from './filehandler';
 import { ERNode } from './ernode';
 
 const icons = import.meta.glob('/icons/*.svg', { eager: true, query: '?url', import: 'default' });
@@ -115,27 +116,33 @@ export class ERDiagram {
      * @param {Object} config - The configuration object containing nodes and links.
      */
     loadConfig(config) {
-        this.config = config;
-        this.nodes = this.config.nodes.map(n => {
+        this.nodes = config.nodes.map(n => {
             // Each node receives a callback that is called when the text is changed.
             const node = new ERNode(n, this.width, this.height);
-            node.onTextChange = this.updateNodeText.bind(this);
             return node;
         });
         // Links remain unchanged so that d3.forceLink can resolve the IDs.
-        this.links = this.config.links.map(l => ({ ...l }));
+        this.links = config.links.map(l => ({ ...l }));
     }
 
-    /**
-     * Updates the text of a node in the internal configuration.
-     * @param {ERNode} node - The changed node instance.
-     */
-    updateNodeText(node) {
-        const configNode = this.config.nodes.find(n => n.id === node.id);
-        if (configNode) {
-            configNode.text = node.text;
-            console.log(`Node ${node.id} Text aktualisiert:`, node.text);
-        }
+    uploadDocument() {
+        JsonFileHandler.openJsonFile()
+        .then(jsonData => {
+            this.loadConfig(jsonData);
+            this.updateGraph();
+        })
+        .catch(error => console.error("Fehler:", error));
+    }
+
+    downloadDocument() {
+        JsonFileHandler.downloadJson({
+            "nodes": this.nodes,
+            "links": this.links.map(item => ({
+                source: item.source.id,
+                target: item.target.id,
+                cardinality: item.cardinality
+            }))
+        }, 'er_diagram.json');
     }
 
     /**
