@@ -47,8 +47,16 @@ export class ERDiagram {
     initializeZoom() {
         this.zoom = d3.zoom()
             .scaleExtent([0.1, 10])
+            .on("start", (event) => {
+                if (event.sourceEvent && event.sourceEvent.type === "mousedown") {
+                    this.svg.style("cursor", "grabbing");
+                }
+            })
             .on('zoom', (event) => {
                 this.gMain.attr('transform', event.transform);
+            })
+            .on("end", () => {
+                this.svg.style("cursor", "grab");
             });
         this.svg.call(this.zoom);
     }
@@ -74,9 +82,26 @@ export class ERDiagram {
      */
     loadConfig(config) {
         this.config = config;
-        this.nodes = this.config.nodes.map(n => new ERNode(n, this.width, this.height));
-        // Keep links as they are so that d3.forceLink can resolve node IDs.
+        this.nodes = this.config.nodes.map(n => {
+            // Each node receives a callback that is called when the text is changed.
+            const node = new ERNode(n, this.width, this.height);
+            node.onTextChange = this.updateNodeText.bind(this);
+            return node;
+        });
+        // Links remain unchanged so that d3.forceLink can resolve the IDs.
         this.links = this.config.links.map(l => ({ ...l }));
+    }
+
+    /**
+     * Updates the text of a node in the internal configuration.
+     * @param {ERNode} node - The changed node instance.
+     */
+    updateNodeText(node) {
+        const configNode = this.config.nodes.find(n => n.id === node.id);
+        if (configNode) {
+            configNode.text = node.text;
+            console.log(`Node ${node.id} Text aktualisiert:`, node.text);
+        }
     }
 
     /**
@@ -178,10 +203,7 @@ export class ERDiagram {
                 .on('start', (event, d) => this.dragstarted(event, d))
                 .on('drag', (event, d) => this.dragged(event, d))
                 .on('end', (event, d) => this.dragended(event, d))
-            )
-            .on('click', (event, d) => d.handleClick && d.handleClick(event))
-            .on('dblclick', (event, d) => d.handleDoubleClick && d.handleDoubleClick(event))
-            .on('contextmenu', (event, d) => d.handleRightClick && d.handleRightClick(event));
+            );
 
         // For every new node, render its shape.
         nodeEnter.each(function (d) {

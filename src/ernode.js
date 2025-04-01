@@ -11,6 +11,8 @@ export class ERNode {
         if (typeof this.y !== 'number') {
             this.y = Math.random() * diagramHeight;
         }
+        // Callback for updating text in the diagram config.
+        this.onTextChange = config.onTextChange || null;
     }
 
     /**
@@ -35,12 +37,14 @@ export class ERNode {
             default:
                 console.warn(`Unknown node type: ${this.type}`);
         }
-        // Immediately after rendering, the size is adjusted based on the text content.
+        // Render the label as a foreignObject with an HTML div.
+        this.renderLabel(selection);
+        // Adjust the node size based on text content.
         this.adjustSize(selection);
     }
 
     renderEntity(selection) {
-        // Render rectangle
+        // Render rectangle for entity.
         selection.append('rect')
             .attr('x', -60)
             .attr('y', -30)
@@ -49,11 +53,6 @@ export class ERNode {
             .attr('rx', 10)
             .attr('ry', 10)
             .attr('fill', '#ffcc00');
-        selection.append('text')
-            .attr('text-anchor', 'middle')
-            .attr('dy', '0.35em')
-            .text(this.text)
-            .style('font-size', '14px');
     }
 
     renderRelationship(selection) {
@@ -62,11 +61,6 @@ export class ERNode {
         selection.append('polygon')
             .attr('points', points)
             .attr('fill', '#ccffcc');
-        selection.append('text')
-            .attr('text-anchor', 'middle')
-            .attr('dy', '0.35em')
-            .text(this.text)
-            .style('font-size', '14px');
     }
 
     renderAttribute(selection) {
@@ -76,11 +70,98 @@ export class ERNode {
             .attr('rx', 50)
             .attr('ry', 25)
             .attr('fill', '#66ccff');
-        selection.append('text')
-            .attr('text-anchor', 'middle')
-            .attr('dy', '0.35em')
-            .text(this.text)
-            .style('font-size', '14px');
+    }
+
+    /**
+     * Renders the label as a foreignObject containing an HTML div.
+     * The div shows the text and enables editing on double-click.
+     */
+    renderLabel(selection) {
+        // Set default dimensions based on node type.
+        let defaultWidth = 120, defaultHeight = 60;
+        if (this.type === 'relationship') {
+            defaultWidth = 80;
+            defaultHeight = 80;
+        } else if (this.type === 'attribute') {
+            defaultWidth = 100; // Adjust as needed.
+            defaultHeight = 50; // Ellipse height: 2 * ry.
+        }
+        const fo = selection.append('foreignObject')
+            .attr('class', 'node-label')
+            .attr('x', -defaultWidth / 2)
+            .attr('y', -defaultHeight / 2)
+            .attr('width', defaultWidth)
+            .attr('height', defaultHeight);
+
+        const div = fo.append('xhtml:div')
+            .style('width', '100%')
+            .style('height', '100%')
+            .style('display', 'flex')
+            .style('align-items', 'center')
+            .style('justify-content', 'center')
+            .style('font-size', '14px')
+            .style('text-align', 'center')
+            .style('overflow', 'visible')
+            .style('user-select', 'none')
+            .style('margin', '0')
+            .style('padding', '0')
+            .style('border', 'none')
+            .style('outline', 'none')
+            .style('box-sizing', 'border-box')
+            .style('white-space', 'nowrap')
+            .html(this.text)
+            .on('dblclick', (event) => this.enableEditing(event, div));
+    }
+
+    /**
+     * Enables editing mode for the label div.
+     * @param {Event} event - The double-click event.
+     * @param {d3.Selection} div - The D3 selection of the div element.
+     */
+    enableEditing(event, div) {
+        event.stopPropagation();
+        // Store the original text.
+        this._originalText = this.text;
+        const node = div.node();
+        node.setAttribute("contenteditable", "true");
+        node.focus();
+        // Select the entire text.
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        // Disable borders/outlines during editing.
+        div.style('outline', 'none')
+           .style('border', 'none');
+        // End editing on blur or Enter key.
+        div.on('blur', () => this.disableEditing(div));
+        div.on('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                node.blur();
+            }
+        });
+    }
+
+    /**
+     * Disables editing mode, updates the text and notifies the diagram if needed.
+     * @param {d3.Selection} div - The D3 selection of the div element.
+     */
+    disableEditing(div) {
+        const node = div.node();
+        node.removeAttribute("contenteditable");
+        const newText = div.text();
+        // If text is unchanged, do not trigger a size update.
+        if (newText === this._originalText) return;
+        this.text = newText;
+        // Notify the parent diagram to update the config.
+        if (this.onTextChange && typeof this.onTextChange === 'function') {
+            this.onTextChange(this);
+        }
+        // Adjust the node size after text change.
+        const parentGroup = d3.select(node.parentNode.parentNode);
+        this.adjustSize(parentGroup);
     }
 
     /**
@@ -89,40 +170,58 @@ export class ERNode {
      * @param {d3.Selection} selection - The D3 selection of the node group.
      */
     adjustSize(selection) {
-        const textElement = selection.select("text");
-        if (textElement.empty()) return;
+        const div = selection.select("foreignObject > div");
+        if (div.empty()) return;
 
-        // General configuration values
+        // Configuration values.
         const PADDING = 20;
         const MAX_WIDTH = 300;
         const DEFAULT_FONT_SIZE = 14;
         const MIN_FONT_SIZE = 10;
 
-        // Determine current font size
-        let currentFontSize = parseFloat(textElement.style("font-size")) || DEFAULT_FONT_SIZE;
-        let textBBox = textElement.node().getBBox();
+        // Determine current font size.
+        let currentFontSize = parseFloat(div.style("font-size")) || DEFAULT_FONT_SIZE;
+        const nodeEl = div.node();
+        // Temporarily set width to 'fit-content' to get the natural text width.
+        const originalWidth = nodeEl.style.width;
+        nodeEl.style.width = 'fit-content';
+        let textWidth = nodeEl.scrollWidth;
+        // Restore the original width.
+        nodeEl.style.width = originalWidth;
 
-        // If the text is too wide, reduce the font size
-        if (textBBox.width > MAX_WIDTH - PADDING) {
-            let newFontSize = Math.max(MIN_FONT_SIZE, currentFontSize * (MAX_WIDTH - PADDING) / textBBox.width);
-            textElement.style("font-size", `${newFontSize}px`);
-            textBBox = textElement.node().getBBox(); // Recalculate bounding box after adjustment
+        // If the text is too wide, reduce the font size.
+        if (textWidth > MAX_WIDTH - PADDING) {
+            let newFontSize = Math.max(MIN_FONT_SIZE, currentFontSize * (MAX_WIDTH - PADDING) / textWidth);
+            div.style("font-size", `${newFontSize}px`);
+            currentFontSize = newFontSize;
+            // Re-measure with the adjusted font size.
+            nodeEl.style.width = 'fit-content';
+            textWidth = nodeEl.scrollWidth;
+            nodeEl.style.width = originalWidth;
         } else {
-            // Restore standard font size if sufficient space is available
-            textElement.style("font-size", `${DEFAULT_FONT_SIZE}px`);
-            textBBox = textElement.node().getBBox();
+            // Restore the standard font size if sufficient space is available.
+            div.style("font-size", `${DEFAULT_FONT_SIZE}px`);
+            nodeEl.style.width = 'fit-content';
+            textWidth = nodeEl.scrollWidth;
+            nodeEl.style.width = originalWidth;
         }
 
-        // Adjust node shape based on type
+        // Update the foreignObject width based on the natural text width plus padding.
+        const newWidth = Math.max(100, textWidth + PADDING);
+        selection.select("foreignObject")
+            .attr("width", newWidth)
+            .attr("x", -newWidth / 2);
+
+        // Adjust the node shape based on type.
         switch (this.type) {
             case "entity":
-                this.adjustEntitySize(selection, textBBox, PADDING);
+                this.adjustEntitySize(selection, newWidth);
                 break;
             case "attribute":
-                this.adjustAttributeSize(selection, textBBox, PADDING);
+                this.adjustAttributeSize(selection, newWidth);
                 break;
             case "relationship":
-                this.adjustRelationshipSize(selection, textBBox, PADDING);
+                this.adjustRelationshipSize(selection, newWidth);
                 break;
         }
     }
@@ -130,53 +229,35 @@ export class ERNode {
     /**
      * Adjusts the size of an entity node.
      */
-    adjustEntitySize(selection, textBBox, padding) {
-        const newWidth = Math.max(120, textBBox.width + padding);
+    adjustEntitySize(selection, newWidth) {
+        const minWidth = 120;
+        const finalWidth = Math.max(minWidth, newWidth);
         selection.select("rect")
-            .attr("width", newWidth)
-            .attr("x", -newWidth / 2);
-        this.width = newWidth;
+            .attr("width", finalWidth)
+            .attr("x", -finalWidth / 2);
+        this.width = finalWidth;
     }
 
     /**
      * Adjusts the size of an attribute node (ellipse).
      */
-    adjustAttributeSize(selection, textBBox, padding) {
-        const newRadiusX = Math.max(50, textBBox.width / 2 + padding / 2);
+    adjustAttributeSize(selection, newWidth) {
+        const newRx = Math.max(50, newWidth / 2);
         selection.select("ellipse")
-            .attr("rx", newRadiusX);
-        this.rx = newRadiusX;
+            .attr("rx", newRx);
+        this.rx = newRx;
     }
 
     /**
      * Adjusts the size of a relationship node (diamond).
      */
-    adjustRelationshipSize(selection, textBBox, padding) {
-        const newWidth = Math.max(80, textBBox.width + padding) * 1.4;
+    adjustRelationshipSize(selection, newWidth) {
+        const finalWidth = Math.max(80, newWidth) * 1.4;
         const newHeight = 80;
-        const points = `0,${-newHeight / 2} ${newWidth / 2},0 0,${newHeight / 2} ${-newWidth / 2},0`;
-
+        const points = `0,${-newHeight / 2} ${finalWidth / 2},0 0,${newHeight / 2} ${-finalWidth / 2},0`;
         selection.select("polygon")
             .attr("points", points);
-
-        this.width = newWidth;
+        this.width = finalWidth;
         this.height = newHeight;
-    }
-
-    handleClick(event) {
-        console.log("Node clicked:", this);
-        // Add your custom click handling logic here.
-    }
-
-    handleDoubleClick(event) {
-        event.stopPropagation();
-        console.log("Node double-clicked:", this);
-        // Add your custom double-click handling logic here.
-    }
-
-    handleRightClick(event) {
-        event.preventDefault(); // Prevent the default context menu.
-        console.log("Node right-clicked:", this);
-        // Add your custom right-click handling logic here.
     }
 }
