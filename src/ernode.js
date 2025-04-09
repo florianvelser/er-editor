@@ -24,7 +24,6 @@ export class ERNode {
                 if (typeof this.height !== 'number') this.height = 60;
                 break;
             default:
-                // Fallback-Werte, falls nötig.
                 break;
         }
     }
@@ -34,6 +33,8 @@ export class ERNode {
      * @param {d3.Selection} selection - The D3 selection of the node group element.
      */
     render(selection) {
+        // Save group selection for updates
+        this.selection = selection;
         // Clear previous contents.
         selection.selectAll('*').remove();
 
@@ -53,7 +54,6 @@ export class ERNode {
         }
         // Render the label as a foreignObject with an HTML div.
         this.renderLabel(selection);
-        // Adjust the node size based on text content.
         this.adjustSize(selection);
     }
 
@@ -91,14 +91,13 @@ export class ERNode {
      * The div shows the text and enables editing on double-click.
      */
     renderLabel(selection) {
-        // Set default dimensions based on node type.
         let defaultWidth = 120, defaultHeight = 60;
         if (this.type === 'relationship') {
             defaultWidth = 80;
             defaultHeight = 80;
         } else if (this.type === 'attribute') {
-            defaultWidth = 100; // Adjust as needed.
-            defaultHeight = 50; // Ellipse height: 2 * ry.
+            defaultWidth = 100;
+            defaultHeight = 50;
         }
         const fo = selection.append('foreignObject')
             .attr('class', 'node-label')
@@ -134,21 +133,16 @@ export class ERNode {
      */
     enableEditing(event, div) {
         event.stopPropagation();
-        // Store the original text.
         this._originalText = this.text;
         const node = div.node();
         node.setAttribute("contenteditable", "true");
         node.focus();
-        // Select the entire text.
         const range = document.createRange();
         range.selectNodeContents(node);
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
-        // Disable borders/outlines during editing.
-        div.style('outline', 'none')
-           .style('border', 'none');
-        // End editing on blur or Enter key.
+        div.style('outline', 'none').style('border', 'none');
         div.on('blur', () => this.disableEditing(div));
         div.on('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -166,10 +160,8 @@ export class ERNode {
         const node = div.node();
         node.removeAttribute("contenteditable");
         const newText = div.text();
-        // If text is unchanged, do not trigger a size update.
         if (newText === this._originalText) return;
         this.text = newText;
-        // Adjust the node size after text change.
         const parentGroup = d3.select(node.parentNode.parentNode);
         this.adjustSize(parentGroup);
     }
@@ -182,47 +174,30 @@ export class ERNode {
     adjustSize(selection) {
         const div = selection.select("foreignObject > div");
         if (div.empty()) return;
-
-        // Configuration values.
-        const PADDING = 20;
-        const MAX_WIDTH = 300;
-        const DEFAULT_FONT_SIZE = 14;
-        const MIN_FONT_SIZE = 10;
-
-        // Determine current font size.
+        const PADDING = 20, MAX_WIDTH = 300, DEFAULT_FONT_SIZE = 14, MIN_FONT_SIZE = 10;
         let currentFontSize = parseFloat(div.style("font-size")) || DEFAULT_FONT_SIZE;
         const nodeEl = div.node();
-        // Temporarily set width to 'fit-content' to get the natural text width.
         const originalWidth = nodeEl.style.width;
         nodeEl.style.width = 'fit-content';
         let textWidth = nodeEl.scrollWidth;
-        // Restore the original width.
         nodeEl.style.width = originalWidth;
-
-        // If the text is too wide, reduce the font size.
         if (textWidth > MAX_WIDTH - PADDING) {
             let newFontSize = Math.max(MIN_FONT_SIZE, currentFontSize * (MAX_WIDTH - PADDING) / textWidth);
             div.style("font-size", `${newFontSize}px`);
             currentFontSize = newFontSize;
-            // Re-measure with the adjusted font size.
             nodeEl.style.width = 'fit-content';
             textWidth = nodeEl.scrollWidth;
             nodeEl.style.width = originalWidth;
         } else {
-            // Restore the standard font size if sufficient space is available.
             div.style("font-size", `${DEFAULT_FONT_SIZE}px`);
             nodeEl.style.width = 'fit-content';
             textWidth = nodeEl.scrollWidth;
             nodeEl.style.width = originalWidth;
         }
-
-        // Update the foreignObject width based on the natural text width plus padding.
         const newWidth = Math.max(100, textWidth + PADDING);
         selection.select("foreignObject")
             .attr("width", newWidth)
             .attr("x", -newWidth / 2);
-
-        // Adjust the node shape based on type.
         switch (this.type) {
             case "entity":
                 this.adjustEntitySize(selection, newWidth);
@@ -236,9 +211,6 @@ export class ERNode {
         }
     }
 
-    /**
-     * Adjusts the size of an entity node.
-     */
     adjustEntitySize(selection, newWidth) {
         const minWidth = 120;
         const finalWidth = Math.max(minWidth, newWidth);
@@ -248,9 +220,6 @@ export class ERNode {
         this.width = finalWidth;
     }
 
-    /**
-     * Adjusts the size of an attribute node (ellipse).
-     */
     adjustAttributeSize(selection, newWidth) {
         const newRx = Math.max(50, newWidth / 2);
         selection.select("ellipse")
@@ -258,9 +227,6 @@ export class ERNode {
         this.rx = newRx;
     }
 
-    /**
-     * Adjusts the size of a relationship node (diamond).
-     */
     adjustRelationshipSize(selection, newWidth) {
         const finalWidth = Math.max(80, newWidth) * 1.4;
         const newHeight = 80;
@@ -269,5 +235,67 @@ export class ERNode {
             .attr("points", points);
         this.width = finalWidth;
         this.height = newHeight;
+    }
+
+    getBoundingBox() {
+        switch (this.type) {
+            case "entity":
+                return {
+                    left: this.x - this.width / 2,
+                    right: this.x + this.width / 2,
+                    top: this.y - 30,
+                    bottom: this.y + 30
+                };
+            case "relationship":
+                return {
+                    left: this.x - this.width / 2,
+                    right: this.x + this.width / 2,
+                    top: this.y - 40,
+                    bottom: this.y + 40
+                };
+            case "attribute":
+                return {
+                    left: this.x - this.rx,
+                    right: this.x + this.rx,
+                    top: this.y - 25,
+                    bottom: this.y + 25
+                };
+            default:
+                return { left: this.x, right: this.x, top: this.y, bottom: this.y };
+        }
+    }
+
+    collidesWith(other) {
+        const a = this.getBoundingBox();
+        const b = other.getBoundingBox();
+        return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+    }
+
+    getCollidingNodes(nodes) {
+        return nodes.filter(node => node !== this && this.collidesWith(node));
+    }
+
+    /**
+     * Marks the node as selected and displays a light grey frame.
+     */
+    select() {
+        if (this.selection.select('.node-selection-border').node()) return;
+        if (this.type === "entity") {
+            const gap = 4;
+            this.selection.insert("rect", ":first-child")
+                .attr("class", "node-selection-border")
+                .attr("x", -this.width / 2 - gap)
+                .attr("y", -30 - gap)
+                .attr("rx", 12)
+                .attr("width", this.width + gap*2)
+                .attr("height", 60 + gap*2)
+                .attr("stroke", "lightgray")
+                .attr("stroke-width", 3)
+                .attr("fill", "none");
+        }
+    }
+
+    deselect() {
+        this.selection.select('.node-selection-border').remove();
     }
 }

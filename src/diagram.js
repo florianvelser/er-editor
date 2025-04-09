@@ -21,9 +21,8 @@ export class ERDiagram {
         this.links = [];
         this.initializeSVG();
         this.initializeZoom();
-        this.loadDefaultConfig(); // loadDefaultConfig uses the example JSON.
         this.initializeSimulation();
-        this.updateGraph();
+        this.loadDefaultConfig();
     }
 
     /**
@@ -66,7 +65,6 @@ export class ERDiagram {
         this.svg.call(this.zoom);
     }
 
-
     /**
      * Set the zoom percentage (0 - 100)
      */
@@ -74,7 +72,7 @@ export class ERDiagram {
         const minLog = Math.log10(0.1); // -1
         const maxLog = Math.log10(10);  // 1
         const logValue = minLog + (percentage / 100) * (maxLog - minLog);
-        const newScale = Math.pow(10, logValue); // Neue Zoomstufe
+        const newScale = Math.pow(10, logValue); // New zoom level
 
         // Retrieve current transformation
         const currentTransform = d3.zoomTransform(this.svg.node());
@@ -123,20 +121,29 @@ export class ERDiagram {
         });
         // Links remain unchanged so that d3.forceLink can resolve the IDs.
         this.links = config.links.map(l => ({ ...l }));
+        this.updateGraph();
     }
 
     uploadDocument() {
         JsonFileHandler.openJsonFile()
-        .then(jsonData => {
-            this.loadConfig(jsonData);
-            this.updateGraph();
-        })
-        .catch(error => console.error("Fehler:", error));
+            .then(jsonData => {
+                this.loadConfig(jsonData);
+            })
+            .catch(error => console.error("Error:", error));
     }
 
     downloadDocument() {
         JsonFileHandler.downloadJson({
-            "nodes": this.nodes,
+            "nodes": this.nodes.map(item => ({
+                id: item.id,
+                text: item.text,
+                type: item.type,
+                vx: item.vx,
+                vy: item.vy,
+                width: item.width,
+                x: item.x,
+                y: item.y
+            })),
             "links": this.links.map(item => ({
                 source: item.source.id,
                 target: item.target.id,
@@ -231,6 +238,30 @@ export class ERDiagram {
             });
     }
 
+    clear() {
+        this.loadConfig({
+            "nodes": [],
+            "links": []
+        });
+    }
+
+    addEntity() {
+        const bbox = this.svg.node().getBoundingClientRect();
+        const viewportCenterX = bbox.width / 2;
+        const viewportCenterY = bbox.height / 2;
+        const node = new ERNode({
+            id: uuidv4(),
+            type: 'entity',
+            text: 'Entity'
+        });
+        const currentTransform = d3.zoomTransform(this.svg.node());
+        const newX = (viewportCenterX - currentTransform.x) / currentTransform.k;
+        const newY = (viewportCenterY - currentTransform.y) / currentTransform.k;
+        node.x = newX;
+        node.y = newY;
+        this.nodes.push(node)
+        this.updateGraph();
+    }
 
     updateNodes() {
         const nodeSelection = this.gNodes.selectAll('.node')
@@ -251,6 +282,10 @@ export class ERDiagram {
             d.render(d3.select(this));
         });
 
+        nodeSelection.each(function (d) {
+            d.selection = d3.select(this);
+        });
+
         // Merge existing nodes.
         this.gNodes.selectAll('.node').merge(nodeEnter);
     }
@@ -259,17 +294,127 @@ export class ERDiagram {
         if (!event.active) this.simulation.alphaTarget(0.3).restart();
         d.fx = d.x;
         d.fy = d.y;
+        // Store the currently dragged node.
+        this.currentlyDraggedNode = d;
+        // If a selection already exists, deselect it:
+        if (d._currentSelectedNode) {
+            d._currentSelectedNode.deselect();
+            d._currentSelectedNode = null;
+        }
     }
 
     dragged(event, d) {
         d.fx = event.x;
         d.fy = event.y;
+        this.updateNodeSelection(d);
+    }
+
+    /**
+     * Updates the selection for the given node 'd'.
+     * It checks if 'd' collides with an entity and selects the nearest entity.
+     * If no collision exists or the collision changes, the selection is updated.
+     *
+     * @param {ERNode} d - The currently moved node.
+     */
+    updateNodeSelection(d) {
+        if (d.type != "entity") return;
+        // Determine all colliding nodes of type "entity"
+        const collidingEntities = d.getCollidingNodes(this.nodes)
+            .filter(node => node.type === "entity");
+
+        let closest = null;
+        let minDist = Infinity;
+        // Find the nearest entity
+        collidingEntities.forEach(node => {
+            const dist = Math.hypot(d.x - node.x, d.y - node.y);
+            if (dist < minDist) {
+                minDist = dist;
+                closest = node;
+            }
+        });
+
+        if (closest) {
+            // If a different entity was already selected, deselect it.
+            if (d._currentSelectedNode && d._currentSelectedNode !== closest) {
+                d._currentSelectedNode.deselect();
+            }
+            // Select the determined entity.
+            closest.select();
+            d._currentSelectedNode = closest;
+        } else {
+            // No collision partner: clear existing selection.
+            if (d._currentSelectedNode) {
+                d._currentSelectedNode.deselect();
+                d._currentSelectedNode = null;
+            }
+        }
+    }
+
+    createRelation(node1, node2) {
+        // Create relation between node1 and node2 using a relation node with the default text 'Relation'
+        // Use links to connect the nodes
+        const relationNode = new ERNode({
+            id: uuidv4(),
+            type: 'relationship',
+            text: 'Relation'
+        });
+        // Set the relation node's position to the midpoint between node1 and node2
+        relationNode.x = (node1.x + node2.x) / 2;
+        relationNode.y = (node1.y + node2.y) / 2;
+        this.nodes.push(relationNode);
+        // Create links connecting node1 -> relationNode and relationNode -> node2
+        this.links.push({
+            source: node1,
+            target: relationNode,
+            cardinality: '_'
+        });
+        this.links.push({
+            source: relationNode,
+            target: node2,
+            cardinality: '_'
+        });
+
+        // Calculate push vector between the two entity nodes.
+        const dx = node2.x - node1.x;
+        const dy = node2.y - node1.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const pushStrength = 50; // Change this value to adjust how far the nodes are pushed
+
+        if (distance > 0) {
+            // Normalize the direction and apply the push
+            const offsetX = (dx / distance) * pushStrength;
+            const offsetY = (dy / distance) * pushStrength;
+
+            // Move node1 in the opposite direction of node2
+            node1.x -= offsetX;
+            node1.y -= offsetY;
+
+            // Move node2 in its own direction away from node1
+            node2.x += offsetX;
+            node2.y += offsetY;
+        }
+
+        // this.simulation.force('charge', d3.forceManyBody().strength(-900));
+        this.updateGraph();
+        // setTimeout(() => {
+        //     this.simulation.force('charge', d3.forceManyBody().strength(-20));
+        // }, 100);
     }
 
     dragended(event, d) {
         if (!event.active) this.simulation.alphaTarget(0);
         d.fx = null;
         d.fy = null;
+        // Clear the selection when dragging ends.
+        if (d._currentSelectedNode) {
+            // Create relation between the 2 nodes
+            this.createRelation(d, d._currentSelectedNode);
+        }
+        if (d._currentSelectedNode) {
+            d._currentSelectedNode.deselect();
+            d._currentSelectedNode = null;
+        }
+        this.currentlyDraggedNode = null;
     }
 
     calculateDistanceNodes(node1, node2) {
@@ -334,6 +479,9 @@ export class ERDiagram {
      * Update positions of nodes and links on each simulation tick.
      */
     ticked() {
+        if (this.currentlyDraggedNode) {
+            this.updateNodeSelection(this.currentlyDraggedNode);
+        }
         // Update non-cardinality links (single line)
         this.gLinks.selectAll('.link.non-cardinality')
             .attr('x1', d => this.computeAnchor(d.source, d.target, 7).x)

@@ -13,6 +13,8 @@ const zoomRange = document.getElementById('zoom-level');
 const zoomText = document.getElementById('zoom-text');
 const downloadDocumentButton = document.getElementById('download-json');
 const uploadDocumentButton = document.getElementById('upload-json-btn');
+const newDocumentButton = document.getElementById('diagram-new');
+const addEntityButton = document.getElementById('add-entity');
 
 zoomRange.value = 50;
 
@@ -40,4 +42,12 @@ downloadDocumentButton.addEventListener("click", function () {
 
 uploadDocumentButton.addEventListener("click", function () {
     er_diagram.uploadDocument();
+});
+
+newDocumentButton.addEventListener("click", function () {
+    er_diagram.clear();
+});
+
+addEntityButton.addEventListener("click", function () {
+    er_diagram.addEntity();
 });
