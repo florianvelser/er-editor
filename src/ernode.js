@@ -6,6 +6,8 @@ export class ERNode {
         Object.assign(this, config);
         // Array for registered Right Click Listeners
         this.rightClickListeners = [];
+        // Array for registered Change Listeners
+        this.changeListeners = [];
 
         // Set initial positions if not provided.
         if (typeof this.x !== 'number') {
@@ -37,6 +39,23 @@ export class ERNode {
 
     removeRightClickListener(listener) {
         this.rightClickListeners = this.rightClickListeners.filter(l => l !== listener);
+    }
+    
+    /**
+     * Registers a listener function to be called when the text changes.
+     * The listener is called with two parameters: before and after.
+     * @param {Function} listener - The function to call on text change.
+     */
+    addChangeListener(listener) {
+        this.changeListeners.push(listener);
+    }
+    
+    /**
+     * Optional: Removes a Change Listener.
+     * @param {Function} listener - Listener to be removed.
+     */
+    removeChangeListener(listener) {
+        this.changeListeners = this.changeListeners.filter(l => l !== listener);
     }
 
     render(selection) {
@@ -131,7 +150,7 @@ export class ERNode {
             .html(this.text)
             .on('dblclick', (event) => this.enableEditing(event, div))
             .on('contextmenu', (event) => this.contextmenu(event));
-        if(this.primary) {
+        if (this.primary) {
             div.style('text-decoration', 'underline');
         }
 
@@ -184,6 +203,11 @@ export class ERNode {
         node.removeAttribute("contenteditable");
         const newText = div.text();
         if (newText === this._originalText) return;
+        const before = this._originalText;
+        const after = newText;
+        // Call all registered change listeners
+        this.changeListeners.forEach(listener => listener(before, after));
+        // Update the text
         this.text = newText;
         const parentGroup = d3.select(node.parentNode.parentNode);
         this.adjustSize(parentGroup);

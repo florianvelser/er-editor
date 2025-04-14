@@ -136,8 +136,8 @@ export class ERDiagram {
             .catch(error => console.error("Error:", error));
     }
 
-    downloadDocument() {
-        JsonFileHandler.downloadJson({
+    getStateSnapshot() {
+        return {
             "nodes": this.nodes.map(item => ({
                 id: item.id,
                 text: item.text,
@@ -154,7 +154,11 @@ export class ERDiagram {
                 target: item.target.id,
                 cardinality: item.cardinality
             }))
-        }, 'er_diagram.json');
+        };
+    }
+
+    downloadDocument() {
+        JsonFileHandler.downloadJson(this.getStateSnapshot(), 'er_diagram.json');
     }
 
     /**
@@ -284,7 +288,8 @@ export class ERDiagram {
         const newY = (viewportCenterY - currentTransform.y) / currentTransform.k;
         node.x = newX;
         node.y = newY;
-        this.nodes.push(node)
+        this.historyManager.save(this.getStateSnapshot());
+        this.nodes.push(node);
         this.updateGraph();
     }
 
@@ -388,9 +393,13 @@ export class ERDiagram {
 
             console.log("Rechtsklick auf ERNode ausgelöst!", event);
         });
+        node.addChangeListener((before, after) => {
+            this.historyManager.save(this.getStateSnapshot());
+        });
     }
 
     addAttributeNode() {
+        this.historyManager.save(this.getStateSnapshot());
         if(this.contextmenuhandler.getContextNode().type != 'entity' && this.contextmenuhandler.getContextNode().type != 'relationship') {
             return;
         }
@@ -415,7 +424,22 @@ export class ERDiagram {
         newAttr.enableEditing();
     }
 
+    undo() {
+        const prevState = this.historyManager.undo(this.getStateSnapshot());
+        if (prevState) {
+            this.loadConfig(prevState);
+        }
+    }
+
+    redo() {
+        const nextState = this.historyManager.redo(this.getStateSnapshot());
+        if (nextState) {
+            this.loadConfig(nextState);
+        }
+    }
+
     deleteNode() {
+        this.historyManager.save(this.getStateSnapshot());
         if (this.contextmenuhandler.getContextNode().type === "entity") {
             let removeSet = new Set([this.contextmenuhandler.getContextNode().id]);
 
@@ -473,6 +497,7 @@ export class ERDiagram {
     }
 
     setPrimaryKey() {
+        this.historyManager.save(this.getStateSnapshot());
         const attributeNode = this.contextmenuhandler.getContextNode();
         // Find the parent entity
         const parentEntity = this.nodes.find(n =>
@@ -513,6 +538,7 @@ export class ERDiagram {
     }
 
     createRelation(node1, node2) {
+        this.historyManager.save(this.getStateSnapshot());
         // Create relation between node1 and node2 using a relation node with the default text 'Relation'
         // Use links to connect the nodes
         const relationNode = new ERNode({
