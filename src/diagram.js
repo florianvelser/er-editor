@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import example_config from './diagram_exampleconfig.json';
 import { JsonFileHandler } from './filehandler';
 import { ERNode } from './ernode';
+import { Contextmenu } from "./contextmenu";
 
 const icons = import.meta.glob('/icons/*.svg', { eager: true, query: '?url', import: 'default' });
 
@@ -16,6 +17,7 @@ export class ERDiagram {
             .attr('width', width)
             .attr('height', height);
         this.historyManager = new HistoryManager();
+        this.contextmenuhandler = new Contextmenu();
         this.onZoom = null
         this.nodes = [];
         this.links = [];
@@ -23,6 +25,7 @@ export class ERDiagram {
         this.initializeZoom();
         this.initializeSimulation();
         this.loadDefaultConfig();
+        this.addContextMenuButtonListener();
     }
 
     /**
@@ -117,6 +120,7 @@ export class ERDiagram {
         this.nodes = config.nodes.map(n => {
             // Each node receives a callback that is called when the text is changed.
             const node = new ERNode(n, this.width, this.height);
+            this.addContextMenuListener(node);
             return node;
         });
         // Links remain unchanged so that d3.forceLink can resolve the IDs.
@@ -254,6 +258,7 @@ export class ERDiagram {
             type: 'entity',
             text: 'Entity'
         });
+        this.addContextMenuListener(node);
         const currentTransform = d3.zoomTransform(this.svg.node());
         const newX = (viewportCenterX - currentTransform.x) / currentTransform.k;
         const newY = (viewportCenterY - currentTransform.y) / currentTransform.k;
@@ -350,6 +355,47 @@ export class ERDiagram {
         }
     }
 
+    addContextMenuListener(node) {
+        node.addRightClickListener((event) => {
+            event.preventDefault();
+
+            this.contextmenuhandler.setPosition(event.pageX, event.pageY);
+            this.contextmenuhandler.show(node);
+
+            console.log("Rechtsklick auf ERNode ausgelöst!", event);
+        });
+    }
+
+    addAttributeNode() {
+        if(this.contextmenuhandler.getContextNode().type != 'entity' && this.contextmenuhandler.getContextNode().type != 'relationship') {
+            return;
+        }
+
+        const newId = uuidv4();
+
+        const newAttr = new ERNode({
+            id: newId,
+            type: 'attribute',
+            text: 'Attribute'
+        });
+
+        this.nodes.push(newAttr);
+
+        this.links.push({
+            source: this.contextmenuhandler.getContextNode().id,
+            target: newId
+        });
+
+        this.updateGraph();
+        newAttr.enableEditing();
+    }
+
+    addContextMenuButtonListener() {
+        document.getElementById("add-attribute-button").addEventListener('click', () => {
+            this.addAttributeNode();
+        });
+    }
+
     createRelation(node1, node2) {
         // Create relation between node1 and node2 using a relation node with the default text 'Relation'
         // Use links to connect the nodes
@@ -358,6 +404,7 @@ export class ERDiagram {
             type: 'relationship',
             text: 'Relation'
         });
+        this.addContextMenuListener(relationNode);
         // Set the relation node's position to the midpoint between node1 and node2
         relationNode.x = (node1.x + node2.x) / 2;
         relationNode.y = (node1.y + node2.y) / 2;
