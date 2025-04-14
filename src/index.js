@@ -15,6 +15,8 @@ const downloadDocumentButton = document.getElementById('download-json');
 const uploadDocumentButton = document.getElementById('upload-json-btn');
 const newDocumentButton = document.getElementById('diagram-new');
 const addEntityButton = document.getElementById('add-entity');
+const undoButton = document.getElementById('undo-btn');
+const redoButton = document.getElementById('redo-btn');
 
 zoomRange.value = 50;
 
@@ -50,4 +52,12 @@ newDocumentButton.addEventListener("click", function () {
 
 addEntityButton.addEventListener("click", function () {
     er_diagram.addEntity();
+});
+
+undoButton.addEventListener("click", function () {
+    er_diagram.undo();
+});
+
+redoButton.addEventListener("click", function () {
+    er_diagram.redo();
 });
