@@ -4,6 +4,9 @@
 export class ERNode {
     constructor(config, diagramWidth, diagramHeight) {
         Object.assign(this, config);
+        // Array for registered Right Click Listeners
+        this.rightClickListeners = [];
+
         // Set initial positions if not provided.
         if (typeof this.x !== 'number') {
             this.x = Math.random() * diagramWidth;
@@ -28,10 +31,14 @@ export class ERNode {
         }
     }
 
-    /**
-     * Render the node into the given D3 selection.
-     * @param {d3.Selection} selection - The D3 selection of the node group element.
-     */
+    addRightClickListener(listener) {
+        this.rightClickListeners.push(listener);
+    }
+
+    removeRightClickListener(listener) {
+        this.rightClickListeners = this.rightClickListeners.filter(l => l !== listener);
+    }
+
     render(selection) {
         // Save group selection for updates
         this.selection = selection;
@@ -58,7 +65,6 @@ export class ERNode {
     }
 
     renderEntity(selection) {
-        // Render rectangle for entity.
         selection.append('rect')
             .attr('x', -60)
             .attr('y', -30)
@@ -123,7 +129,14 @@ export class ERNode {
             .style('box-sizing', 'border-box')
             .style('white-space', 'nowrap')
             .html(this.text)
-            .on('dblclick', (event) => this.enableEditing(event, div));
+            .on('dblclick', (event) => this.enableEditing(event, div))
+            .on('contextmenu', (event) => this.contextmenu(event));
+            
+        this.labelDiv = div;
+    }
+
+    contextmenu(event) {
+        this.rightClickListeners.forEach(listener => listener(event));
     }
 
     /**
@@ -132,9 +145,16 @@ export class ERNode {
      * @param {d3.Selection} div - The D3 selection of the div element.
      */
     enableEditing(event, div) {
-        event.stopPropagation();
+        if (event && event.stopPropagation) {
+            event.stopPropagation();
+        }
+        const labelDiv = div || this.labelDiv;
+        if (!labelDiv) {
+            console.error("No label DOM element found that can be edited.");
+            return;
+        }
         this._originalText = this.text;
-        const node = div.node();
+        const node = labelDiv.node();
         node.setAttribute("contenteditable", "true");
         node.focus();
         const range = document.createRange();
@@ -142,9 +162,9 @@ export class ERNode {
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
-        div.style('outline', 'none').style('border', 'none');
-        div.on('blur', () => this.disableEditing(div));
-        div.on('keydown', (e) => {
+        labelDiv.style('outline', 'none').style('border', 'none');
+        labelDiv.on('blur', () => this.disableEditing(labelDiv));
+        labelDiv.on('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 node.blur();
@@ -287,8 +307,8 @@ export class ERNode {
                 .attr("x", -this.width / 2 - gap)
                 .attr("y", -30 - gap)
                 .attr("rx", 12)
-                .attr("width", this.width + gap*2)
-                .attr("height", 60 + gap*2)
+                .attr("width", this.width + gap * 2)
+                .attr("height", 60 + gap * 2)
                 .attr("stroke", "lightgray")
                 .attr("stroke-width", 3)
                 .attr("fill", "none");

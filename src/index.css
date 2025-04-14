@@ -337,3 +337,60 @@ input[type=range]::-ms-thumb {
     transform: translateX(-50%);
     border-radius: 5px;
 }
+
+#contextmenu {
+    position: absolute;
+    left: 300px;
+    top: 300px;
+    background-color: #fff;
+    padding: 6px;
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+    border-radius: 10px;
+    outline: none;
+    display: none;
+}
+
+#contextmenu .item {
+    padding: 8px;
+    position: relative;
+    white-space: nowrap;
+    width: 200px;
+    background-repeat: no-repeat;
+    background-position: 8px center;
+    background-size: 20px 20px;
+    padding-left: 40px;
+}
+
+#contextmenu .item:hover {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+#contextmenu .item:hover .context_dropdown {
+    display: block;
+}
+
+#contextmenu .context_dropdown {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    background-color: #fff;
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+    border-radius: 8px;
+    padding: 6px;
+    display: none;
+}
+
+#contextmenu .item:has(.context_dropdown)::after {
+    content: '';
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    transform: translateY(-50%);
+    background-image: url(icons/chevron-right.svg);
+    background-size: 16px 16px;
+    background-repeat: no-repeat;
+    background-position: center center;
+}
