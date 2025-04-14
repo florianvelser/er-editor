@@ -131,7 +131,10 @@ export class ERNode {
             .html(this.text)
             .on('dblclick', (event) => this.enableEditing(event, div))
             .on('contextmenu', (event) => this.contextmenu(event));
-            
+        if(this.primary) {
+            div.style('text-decoration', 'underline');
+        }
+
         this.labelDiv = div;
     }
 

@@ -146,7 +146,8 @@ export class ERDiagram {
                 vy: item.vy,
                 width: item.width,
                 x: item.x,
-                y: item.y
+                y: item.y,
+                primary: item.primary
             })),
             "links": this.links.map(item => ({
                 source: item.source.id,
@@ -213,14 +214,14 @@ export class ERDiagram {
         const linkLabelData = this.links.filter(l => l.cardinality);
         const linkTextSelection = this.gLinks.selectAll('.linkText')
             .data(linkLabelData, d => `${d.source.id || d.source}-${d.target.id || d.target}`);
-
+    
         linkTextSelection.exit().remove();
-
+    
         const linkTextEnter = linkTextSelection.enter().append('text')
             .style('transform', 'translate(2px, 3px)')
             .attr('class', 'linkText')
             .attr('text-anchor', 'middle');
-
+    
         const linkText = linkTextEnter.merge(linkTextSelection)
             .text(d => d.cardinality)
             .style('transform', 'translate(0px,3px)')
@@ -240,6 +241,25 @@ export class ERDiagram {
                 const anchorTarget = this.computeAnchor(d.target, d.source, 7);
                 return (anchorSource.y + anchorTarget.y) / 2;
             });
+
+        // Possible cardinalites
+        const cardinalities = ['1', 'n', 'm'];
+        
+        linkText.on('wheel', function(event, d) {
+            event.stopPropagation();
+            let currentIndex = cardinalities.indexOf(this.textContent);
+            if (currentIndex === -1) currentIndex = 0;
+
+            const delta = event.wheelDelta || -event.detail;
+            if (delta > 0) {
+                currentIndex = (currentIndex - 1 + cardinalities.length) % cardinalities.length;
+            } else {
+                currentIndex = (currentIndex + 1) % cardinalities.length;
+            }
+
+            this.textContent = cardinalities[currentIndex];
+            d.cardinality = cardinalities[currentIndex];
+        });
     }
 
     clear() {
@@ -293,6 +313,10 @@ export class ERDiagram {
 
         // Merge existing nodes.
         this.gNodes.selectAll('.node').merge(nodeEnter);
+
+        this.nodes.forEach(n => {
+            n.render(n.selection);
+        });
     }
 
     dragstarted(event, d) {
@@ -380,6 +404,7 @@ export class ERDiagram {
         });
 
         this.nodes.push(newAttr);
+        this.addContextMenuListener(newAttr);
 
         this.links.push({
             source: this.contextmenuhandler.getContextNode().id,
@@ -390,9 +415,100 @@ export class ERDiagram {
         newAttr.enableEditing();
     }
 
+    deleteNode() {
+        if (this.contextmenuhandler.getContextNode().type === "entity") {
+            let removeSet = new Set([this.contextmenuhandler.getContextNode().id]);
+
+            // Recursively find dependent elements
+            const findDependencies = (id) => {
+                this.links.forEach(l => {
+                    const src = l.source.id || l.source;
+                    const tgt = l.target.id || l.target;
+                    if (src === id) {
+                        const node = this.nodes.find(n => n.id === tgt);
+                        if (node && (node.type === "attribute" || node.type === "relationship")) {
+                            if (!removeSet.has(tgt)) {
+                                removeSet.add(tgt);
+                                if (node.type === "relationship") findDependencies(tgt);
+                            }
+                        }
+                    }
+                });
+            };
+
+            findDependencies(this.contextmenuhandler.getContextNode().id);
+            removeSet.add(this.contextmenuhandler.getContextNode().id);
+            this.links.forEach(l => {
+                let src = (typeof l.source === "object" ? l.source.id : l.source);
+                let tgt = (typeof l.target === "object" ? l.target.id : l.target);
+                if (src === this.contextmenuhandler.getContextNode().id) {
+                    let targetNode = this.nodes.find(n => n.id === tgt);
+                    if (targetNode && (targetNode.type === "attribute" || targetNode.type === "relationship")) {
+                        removeSet.add(tgt);
+                    }
+                }
+                if (tgt === this.contextmenuhandler.getContextNode().id) {
+                    let sourceNode = this.nodes.find(n => n.id === src);
+                    if (sourceNode && sourceNode.type === "relationship") {
+                        removeSet.add(src);
+                    }
+                }
+            });
+            this.nodes = this.nodes.filter(n => !removeSet.has(n.id));
+            this.links = this.links.filter(l => {
+                let src = (typeof l.source === "object" ? l.source.id : l.source);
+                let tgt = (typeof l.target === "object" ? l.target.id : l.target);
+                return !removeSet.has(src) && !removeSet.has(tgt);
+            });
+        } else {
+            // For attributes or relationships: simple deletion
+            this.nodes = this.nodes.filter(n => n.id !== this.contextmenuhandler.getContextNode().id);
+            this.links = this.links.filter(l => {
+                let src = (typeof l.source === "object" ? l.source.id : l.source);
+                let tgt = (typeof l.target === "object" ? l.target.id : l.target);
+                return src !== this.contextmenuhandler.getContextNode().id && tgt !== this.contextmenuhandler.getContextNode().id;
+            });
+        }
+        this.updateGraph();
+    }
+
+    setPrimaryKey() {
+        const attributeNode = this.contextmenuhandler.getContextNode();
+        // Find the parent entity
+        const parentEntity = this.nodes.find(n =>
+            this.links.some(l =>
+                (l.source.id || l.source) === n.id &&
+                (l.target.id || l.target) === attributeNode.id
+            )
+        );
+        if (parentEntity) {
+            // Reset primary key status for all attributes of the entity
+            this.nodes.forEach(n => {
+                if (n.type === "attribute" &&
+                    this.links.some(l => (l.source.id || l.source) === parentEntity.id && (l.target.id || l.target) === n.id)) {
+                    n.primary = n.id === attributeNode.id;
+                }
+            });
+            this.nodes.forEach(n => {
+                n.render(n.selection);
+            });
+        }
+    }
+
     addContextMenuButtonListener() {
         document.getElementById("add-attribute-button").addEventListener('click', () => {
+            this.contextmenuhandler.hide();
             this.addAttributeNode();
+        });
+
+        document.getElementById("delete-button").addEventListener('click', () => {
+            this.contextmenuhandler.hide();
+            this.deleteNode();
+        });
+
+        document.getElementById("set-primary-key").addEventListener('click', () => {
+            this.contextmenuhandler.hide();
+            this.setPrimaryKey();
         });
     }
 
@@ -413,12 +529,12 @@ export class ERDiagram {
         this.links.push({
             source: node1,
             target: relationNode,
-            cardinality: '_'
+            cardinality: '1'
         });
         this.links.push({
             source: relationNode,
             target: node2,
-            cardinality: '_'
+            cardinality: '1'
         });
 
         // Calculate push vector between the two entity nodes.
