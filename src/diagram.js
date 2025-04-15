@@ -60,6 +60,7 @@ export class ERDiagram {
                 this.gMain.attr('transform', event.transform);
                 if (this.onZoom && typeof this.onZoom === 'function') {
                     this.onZoom(event.transform.k);
+                    this.onViewChanged();
                 }
             })
             .on("end", () => {
@@ -398,6 +399,77 @@ export class ERDiagram {
         });
     }
 
+    resetView() {
+        this.svg.transition().duration(750).call(this.zoom.transform, d3.zoomIdentity);
+    }
+
+    getDiagramBBox() {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        this.nodes.forEach(n => {
+            let halfWidth = 0, halfHeight = 0;
+            if (n.type === "entity") {
+                halfWidth = (n.width || 120) / 2;
+                halfHeight = 30;
+            } else if (n.type === "attribute") {
+                halfWidth = (n.rx || 50);
+                halfHeight = 25;
+            } else if (n.type === "relationship") {
+                halfWidth = (n.width || 80) / 2;
+                halfHeight = (n.height || 40) / 2;
+            }
+            minX = Math.min(minX, n.x - halfWidth);
+            minY = Math.min(minY, n.y - halfHeight);
+            maxX = Math.max(maxX, n.x + halfWidth);
+            maxY = Math.max(maxY, n.y + halfHeight);
+        });
+        const padding = 20;
+        return {
+            minX: minX - padding,
+            minY: minY - padding,
+            width: (maxX - minX) + 2 * padding,
+            height: (maxY - minY) + 2 * padding
+        };
+    }
+
+    fitToContent() {
+        if (this.nodes.length === 0) return;
+        const bbox = this.getDiagramBBox();
+        const svgRect = this.svg.node().getBoundingClientRect();
+    
+        const scaleX = svgRect.width / bbox.width;
+        const scaleY = svgRect.height / bbox.height;
+        const scale = Math.max(0.1, Math.min(scaleX, scaleY, 1)); // Maximum 1x scaling
+    
+        const translateX = (svgRect.width - bbox.width * scale) / 2 - bbox.minX * scale;
+        const translateY = (svgRect.height - bbox.height * scale) / 2 - bbox.minY * scale;
+    
+        const transform = d3.zoomIdentity.translate(translateX, translateY).scale(scale);
+    
+        this.svg.transition()
+            .duration(750)
+            .call(this.zoom.transform, transform);
+    }
+
+    isContentVisible() {
+        if (this.nodes.length === 0) return false;
+        const bbox = this.getDiagramBBox();
+        const transform = d3.zoomTransform(this.svg.node());
+    
+        // Transform the bounding box coordinates
+        const x1 = transform.applyX(bbox.minX) + 20;
+        const y1 = transform.applyY(bbox.minY) + 20;
+        const x2 = transform.applyX(bbox.minX + bbox.width) - 20;
+        const y2 = transform.applyY(bbox.minY + bbox.height) - 20;
+    
+        // Get SVG dimensions
+        const svgWidth = +this.svg.attr("width");
+        const svgHeight = +this.svg.attr("height");
+    
+        // Return true if any part of the box is within the viewable area
+        return !(x2 < 0 || x1 > svgWidth || y2 < 0 || y1 > svgHeight);
+    }
+    
+
     addAttributeNode() {
         this.historyManager.save(this.getStateSnapshot());
         if(this.contextmenuhandler.getContextNode().type != 'entity' && this.contextmenuhandler.getContextNode().type != 'relationship') {
@@ -664,10 +736,20 @@ export class ERDiagram {
         this.simulation.force("link").distance(d => this.calculateDistance(d));
     }
 
+    onViewChanged() {
+        const backToContentButton = document.getElementById("back-to-content");
+        if(this.isContentVisible()) {
+            backToContentButton.style.display = 'none';
+        } else {
+            backToContentButton.style.display = 'block';
+        }
+    }
+
     /**
      * Update positions of nodes and links on each simulation tick.
      */
     ticked() {
+        this.onViewChanged();
         if (this.currentlyDraggedNode) {
             this.updateNodeSelection(this.currentlyDraggedNode);
         }
