@@ -17,6 +17,9 @@ const newDocumentButton = document.getElementById('diagram-new');
 const addEntityButton = document.getElementById('add-entity');
 const undoButton = document.getElementById('undo-btn');
 const redoButton = document.getElementById('redo-btn');
+const resetViewButton = document.getElementById('reset-view');
+const viewFitContentButton = document.getElementById('fit-content');
+const backToContentButton = document.getElementById('back-to-content');
 
 zoomRange.value = 50;
 
@@ -60,4 +63,16 @@ undoButton.addEventListener("click", function () {
 
 redoButton.addEventListener("click", function () {
     er_diagram.redo();
+});
+
+resetViewButton.addEventListener("click", function () {
+    er_diagram.resetView();
+});
+
+viewFitContentButton.addEventListener("click", function () {
+    er_diagram.fitToContent();
+});
+
+backToContentButton.addEventListener("click", function () {
+    er_diagram.fitToContent();
 });
