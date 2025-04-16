@@ -6,6 +6,7 @@ import example_config from './diagram_exampleconfig.json';
 import { JsonFileHandler } from './filehandler';
 import { ERNode } from './ernode';
 import { Contextmenu } from "./contextmenu";
+import { ERDiagramImageRenderer } from './renderer';
 
 const icons = import.meta.glob('/icons/*.svg', { eager: true, query: '?url', import: 'default' });
 
@@ -160,6 +161,19 @@ export class ERDiagram {
 
     downloadDocument() {
         JsonFileHandler.downloadJson(this.getStateSnapshot(), 'er_diagram.json');
+    }
+
+    renderImage(format, quality, scale) {
+        // Create an instance of the image renderer.
+        const imageRenderer = new ERDiagramImageRenderer(this, 'projectname');
+        // Delegate the export to the image renderer instance.
+        imageRenderer.exportImage(format, quality, scale);
+    }
+
+    renderSVG() {
+        const imageRenderer = new ERDiagramImageRenderer(this, 'projectname');
+        // Delegate the export to the image renderer instance.
+        imageRenderer.downloadStandaloneSVG()
     }
 
     /**
