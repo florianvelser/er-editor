@@ -20,6 +20,10 @@ const redoButton = document.getElementById('redo-btn');
 const resetViewButton = document.getElementById('reset-view');
 const viewFitContentButton = document.getElementById('fit-content');
 const backToContentButton = document.getElementById('back-to-content');
+const exportPNGButton = document.getElementById('export-png');
+const exportWEBPButton = document.getElementById('export-webp');
+const exportJPEGButton = document.getElementById('export-jpeg');
+const exportSVGButton = document.getElementById('export-svg');
 
 zoomRange.value = 50;
 
@@ -75,4 +79,20 @@ viewFitContentButton.addEventListener("click", function () {
 
 backToContentButton.addEventListener("click", function () {
     er_diagram.fitToContent();
+});
+
+exportPNGButton.addEventListener("click", function () {
+    er_diagram.renderImage('png', 1, 2);
+});
+
+exportJPEGButton.addEventListener("click", function () {
+    er_diagram.renderImage('jpeg', 1, 2);
+});
+
+exportWEBPButton.addEventListener("click", function () {
+    er_diagram.renderImage('webp', 1, 2);
+});
+
+exportSVGButton.addEventListener("click", function () {
+    er_diagram.renderSVG();
 });
