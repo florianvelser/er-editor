@@ -39,6 +39,10 @@ export class ERDiagram {
         return this.name;
     }
 
+    getRenderPreview() {
+        return new ERDiagramImageRenderer(this, this.name).exportImageUrl();
+    }
+
     /**
      * Initialize the main SVG groups.
      */
@@ -176,11 +180,11 @@ export class ERDiagram {
         JsonFileHandler.downloadJson(this.getStateSnapshot(), this.name + '.json');
     }
 
-    renderImage(format, quality, scale) {
+    renderImage(format, quality, scale, transparent) {
         // Create an instance of the image renderer.
         const imageRenderer = new ERDiagramImageRenderer(this, this.name);
         // Delegate the export to the image renderer instance.
-        imageRenderer.exportImage(format, quality, scale);
+        imageRenderer.exportImage(format, quality, scale, transparent);
     }
 
     renderSVG() {

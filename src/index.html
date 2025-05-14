@@ -6,7 +6,7 @@
     <title>Entity Relationship Diagram Editor</title>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <link rel="stylesheet" href="index.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 </head>
 
 <body>
@@ -91,6 +91,39 @@
             <div class="modal-actions">
                 <button class="btn cancel" id="modal-cancel">Cancel</button>
                 <button class="btn confirm" id="modal-confirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+    <div id="export-modal" tabindex="-1">
+        <div class="modal-backdrop" id="export-backdrop"></div>
+        <div class="modal-content" role="dialog">
+            <div class="export-body">
+                <img class="export-image checkered" src="" width="520" height="300" alt="Export Preview">
+                <div class="export-options">
+                    <h2 class="modal-title">Export Settings</h2>
+                    <div class="export-row">
+                        <span>Transparent</span>
+                        <label class="switch">
+                            <input type="checkbox" id="opt-transparent">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="export-row">
+                        <span>Skalierung</span>
+                        <div class="segmented-control small" id="opt-scale">
+                            <div class="indicator"></div>
+                            <div class="segment" data-value="1">1x</div>
+                            <div class="segment" data-value="2">2x</div>
+                            <div class="segment active" data-value="3">3x</div>
+                        </div>
+                    </div>
+                    <div class="export-actions">
+                        <button class="btn" data-format="png">PNG</button>
+                        <button class="btn" data-format="webp">WEBP</button>
+                        <button class="btn" data-format="jpeg">JPEG</button>
+                        <button class="btn" data-format="svg">SVG</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

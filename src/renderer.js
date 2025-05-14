@@ -21,7 +21,7 @@ export class ERDiagramImageRenderer {
      * @param {string} format - The image format (e.g., 'png').
      * @param {number} quality - The quality parameter for the conversion.
      */
-    exportImage(format, quality, scale) {
+    exportImage(format, quality, scale, transparent = false) {
         // Get the bounding box of the diagram content from the diagram instance.
         const bbox = this.diagram.getDiagramBBox();
 
@@ -64,12 +64,51 @@ export class ERDiagramImageRenderer {
             quality: quality,
             download: true,
             ignore: '.ignored',
-            background: 'white'
+            background: transparent ? 'transparent' : 'white',
         });
 
         // Remove the temporary cloned SVG from the document.
         document.getElementById('clonedSvg').remove();
     }
+
+    async exportImageUrl(format = 'png', quality = 1.0, scale = 1) {
+        // Get the bounding box of the diagram content from the diagram instance.
+        const bbox = this.diagram.getDiagramBBox();
+
+        // Retrieve the original SVG element from the diagram.
+        const originalSvg = this.diagram.svg.node();
+        // Clone the entire SVG to leave the current view unchanged.
+        const clonedSvg = originalSvg.cloneNode(true);
+
+        // Adjust the cloned SVG to tightly fit the content.
+        clonedSvg.setAttribute('width', bbox.width);
+        clonedSvg.setAttribute('height', bbox.height);
+
+        // Translate the main group to ensure content is properly positioned.
+        const gMain = clonedSvg.querySelector('.gMain');
+        if (gMain) {
+            gMain.style.transform = `translate(${bbox.minX * -1}px, ${bbox.minY * -1}px)`;
+        }
+
+        // Temporarily assign an ID to the cloned SVG and add it to the document.
+        clonedSvg.setAttribute('id', 'clonedSvg');
+        document.body.appendChild(clonedSvg);
+
+        // Trigger conversion of the SVG to PNG.
+        const url = await d3SvgToPng('#clonedSvg', this.projectName, {
+            scale: scale,
+            format: format,
+            quality: quality,
+            ignore: '.ignored',
+            download: false,
+            background: 'transparent'
+        });
+
+        document.getElementById('clonedSvg').remove();
+
+        return url;
+    }
+
 
     async downloadStandaloneSVG(fileName) {
         const svgString = await this._prepareStandaloneSVGString();

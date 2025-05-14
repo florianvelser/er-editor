@@ -151,3 +151,122 @@ export class InputModal extends ModalBase {
         return this.input.value;
     }
 }
+
+export class ExportModal {
+    constructor({ imageSrc = '' }) {
+        this.modal = document.getElementById('export-modal');
+        this.backdrop = this.modal.querySelector('#export-backdrop');
+        this.imageEl = this.modal.querySelector('.export-image');
+        this.transparentCheckbox = this.modal.querySelector('#opt-transparent');
+        this.scaleControl = this.modal.querySelector('#opt-scale');
+        this.formatButtons = Array.from(this.modal.querySelectorAll('.export-actions .btn'));
+        this.indicator = this.scaleControl.querySelector('.indicator');
+        this._promiseResolve = null;
+
+        // Set initial image source
+        this.imageEl.src = imageSrc;
+
+        // Initialize events
+        this._attachEvents();
+
+        // Apply initial checkered state
+        this._updateCheckered();
+    }
+
+    _attachEvents() {
+        this.backdrop.addEventListener('click', () => this._close(null));
+        this.formatButtons.forEach(btn => btn.addEventListener('click', () => {
+            const format = btn.dataset.format;
+            this._close(this._gatherOptions(format));
+        }));
+        this.scaleControl.querySelectorAll('.segment').forEach(seg => {
+            seg.addEventListener('click', () => this._selectScale(seg));
+        });
+
+        this.transparentCheckbox.addEventListener('change', () => this._updateCheckered());
+    }
+
+    _resetScaleToDefault() {
+        // Clear active on all segments
+        this.scaleControl.querySelectorAll('.segment.active').forEach(seg =>
+            seg.classList.remove('active')
+        );
+        // Activate default 3x
+        const defaultSeg = this.scaleControl.querySelector('.segment[data-value="3"]');
+        if (defaultSeg) defaultSeg.classList.add('active');
+    }
+
+    _selectScale(seg) {
+        const current = this.scaleControl.querySelector('.segment.active');
+        if (current) current.classList.remove('active');
+        seg.classList.add('active');
+        this.scale = Number(seg.dataset.value);
+        this._animateIndicator(seg);
+    }
+
+    _moveIndicator(target) {
+        const style = getComputedStyle(this.scaleControl);
+        const pad = parseInt(style.paddingLeft, 10);
+        this.indicator.style.left = (target.offsetLeft + pad) + 'px';
+        this.indicator.style.width = (target.offsetWidth - pad * 2) + 'px';
+    }
+
+    _animateIndicator(target) {
+        // Animate using CSS transition
+        this._moveIndicator(target);
+    }
+
+    _updateCheckered() {
+        if (this.transparentCheckbox.checked) {
+            this.imageEl.classList.add('checkered');
+        } else {
+            this.imageEl.classList.remove('checkered');
+        }
+    }
+
+    _gatherOptions(format) {
+        return {
+            transparent: this.transparentCheckbox.checked,
+            scale: this.scale,
+            format
+        };
+    }
+
+    show() {
+        // Reset to default on each open
+        this._resetScaleToDefault();
+
+        // Show modal
+        this.modal.style.display = 'block';
+        this.transparentCheckbox.checked = false;
+        this.imageEl.classList.remove('checkered');
+
+        // Immediately position indicator without transition
+        const active = this.scaleControl.querySelector('.segment.active');
+        if (active) {
+            // Temporarily disable transition
+            const originalTransition = this.indicator.style.transition;
+            this.indicator.style.transition = 'none';
+
+            // Position the indicator
+            this._moveIndicator(active);
+
+            // Force reflow to apply changes immediately
+            // eslint-disable-next-line no-unused-expressions
+            this.indicator.offsetHeight;
+
+            // Restore transition
+            this.indicator.style.transition = originalTransition || 'left 0.3s ease, width 0.3s ease';
+
+            // Set scale value
+            this.scale = Number(active.dataset.value);
+        }
+
+        return new Promise(res => this._promiseResolve = res);
+    }
+
+    _close(result) {
+        this.modal.style.display = 'none';
+        if (this._promiseResolve) { this._promiseResolve(result); this._promiseResolve = null; }
+    }
+}
