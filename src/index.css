@@ -4,12 +4,18 @@
     padding: 0;
     margin: 0;
     box-sizing: border-box;
-    -webkit-touch-callout: none; /* iOS Safari */
-    -webkit-user-select: none; /* Safari */
-     -khtml-user-select: none; /* Konqueror HTML */
-       -moz-user-select: none; /* Old versions of Firefox */
-        -ms-user-select: none; /* Internet Explorer/Edge */
-            user-select: none; /* Non-prefixed version, currently
+    -webkit-touch-callout: none;
+    /* iOS Safari */
+    -webkit-user-select: none;
+    /* Safari */
+    -khtml-user-select: none;
+    /* Konqueror HTML */
+    -moz-user-select: none;
+    /* Old versions of Firefox */
+    -ms-user-select: none;
+    /* Internet Explorer/Edge */
+    user-select: none;
+    /* Non-prefixed version, currently
                                   supported by Chrome, Edge, Opera and Firefox */
 }
 
@@ -116,30 +122,6 @@ svg {
     white-space: nowrap;
 }
 
-/* Modal-Styles */
-#modal {
-    display: none;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: #fff;
-    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
-    z-index: 2000;
-    padding: 20px;
-    width: 300px;
-    border-radius: 5px;
-}
-
-#modal div:has(button) {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    gap: 12px;
-}
-
 .background {
     position: absolute;
     left: 0;
@@ -154,30 +136,6 @@ body:has(#modal[style*="display: block"]) .background {
     display: block;
 }
 
-
-#modal-title {
-    font-weight: bold;
-    margin-bottom: 16px;
-    font-size: 18px;
-}
-
-#modal-content {
-    margin-bottom: 16px;
-}
-
-#modal select,
-#modal input[type="text"] {
-    appearance: none;
-    border: 2px solid #ccc;
-    outline: none;
-    width: 100%;
-    padding: 8px 12px;
-    font-size: 16px;
-    margin-bottom: 10px;
-    border-radius: 3px;
-    font-family: "Inter", sans-serif;
-}
-
 #clonedSvg {
     z-index: -1000;
 }
@@ -188,15 +146,18 @@ body:has(#modal[style*="display: block"]) .background {
     /* display: flex; */
     display: none;
 }
+
 .menu-item {
     position: relative;
     padding: 8px 16px;
     color: white;
     cursor: pointer;
 }
+
 .menu-item:hover {
     background-color: #555;
 }
+
 .dropdown {
     display: none;
     position: absolute;
@@ -204,8 +165,9 @@ body:has(#modal[style*="display: block"]) .background {
     left: 0;
     background-color: white;
     min-width: 160px;
-    box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
 }
+
 .dropdown a {
     color: black;
     padding: 10px;
@@ -217,27 +179,33 @@ body:has(#modal[style*="display: block"]) .background {
     padding-left: 50px;
     white-space: nowrap;
 }
+
 .dropdown a.disabled {
     opacity: 0.4;
     pointer-events: none;
 }
+
 .dropdown a:hover {
     background-color: #ddd;
 }
+
 .menu-item:hover .dropdown {
     display: block;
 }
+
 .footer {
     display: flex;
     gap: 8px;
     align-items: center;
     height: 36px;
 }
+
 input[type=range] {
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    background: transparent; /* Hintergrund für Firefox entfernen */
+    background: transparent;
+    /* Hintergrund für Firefox entfernen */
 }
 
 input[type=range]:focus {
@@ -310,6 +278,7 @@ input[type=range]::-ms-thumb {
     background: #747474;
     cursor: pointer;
 }
+
 .footer .zoom {
     display: flex;
     gap: 8px;
@@ -317,11 +286,13 @@ input[type=range]::-ms-thumb {
     margin-left: auto;
     padding-right: 12px;
 }
+
 #zoom-text {
     width: 46px;
     text-align: center;
     font-size: 14px;
 }
+
 #projectname {
     padding: 0 12px;
     line-height: 36px;
@@ -331,6 +302,7 @@ input[type=range]::-ms-thumb {
 #projectname:hover {
     background-color: #e2e2e2;
 }
+
 #back-to-content {
     position: absolute;
     bottom: 50px;
@@ -434,4 +406,136 @@ input[type=range]::-ms-thumb {
     background-color: #f1f0ff;
     align-self: center;
     margin: 0 0.25rem;
+}
+
+/* Backdrop */
+#modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1000;
+}
+
+#modal .modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+/* Modal Box */
+#modal .modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fff;
+    padding: 20px;
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+    border-radius: 10px;
+    width: 360px;
+    outline: none;
+}
+
+#modal .modal-title {
+    margin: 0 0 10px;
+    font-size: 1.25rem;
+}
+
+#modal .modal-text {
+    margin: 0 0 20px;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+/* Segmented Control */
+.segmented-control {
+    position: relative;
+    display: flex;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    padding: 4px 2px;
+}
+
+.segmented-control .segment {
+    flex: 1;
+    text-align: center;
+    padding: 8px 0;
+    cursor: pointer;
+    z-index: 1;
+    user-select: none;
+    color: #555;
+}
+
+.segmented-control .segment.active {
+    color: #000;
+}
+
+.segmented-control .indicator {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 0;
+    width: 0;
+    background-color: #fff;
+    border-radius: 6px;
+    transition: left 0.3s ease, width 0.3s ease;
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 4px 12px;
+}
+
+/* Action Buttons */
+.modal-actions {
+    text-align: right;
+}
+
+.modal-actions .btn {
+    padding: 8px 12px;
+    margin-left: 8px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.modal-actions .cancel {
+    background-color: transparent;
+    color: #555;
+}
+
+.modal-actions .cancel:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.modal-actions .confirm {
+    background-color: #212121;
+    color: #fff;
+}
+
+.modal-actions .confirm:hover {
+    background-color: #424242;
+}
+
+#modal input {
+    appearance: none;
+    border: 2px solid rgba(0, 0, 0, 0.05);
+    outline: none;
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 16px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    background-color: rgba(0, 0, 0, 0.05);
+    font-family: "Inter", sans-serif;
+    transition: .2s;
+}
+
+#modal input:focus {
+    border-color: rgba(0, 0, 0, 0.15);
 }
