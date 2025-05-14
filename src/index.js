@@ -42,8 +42,8 @@ er_diagram.onZoom = function(zoom) {
 
 window.addEventListener("resize", function () {
     er_diagram.setDimensions(
-        this.window.innerWidth,
-        this.window.innerHeight - topOffset - bottomOffset
+        window.innerWidth,
+        window.innerHeight - topOffset - bottomOffset
     )
 });
 
@@ -87,19 +87,21 @@ exportPNGButton.addEventListener("click", function () {
     er_diagram.getRenderPreview().then(dataUrl => {
         const exp = new ExportModal({ imageSrc: dataUrl });
         exp.show().then(opts => {
-            switch (opts.format) {
-                case 'png':
-                    er_diagram.renderImage('png', 1, opts.scale, opts.transparent);
-                    break;
-                case 'jpeg':
-                    er_diagram.renderImage('jpeg', 1, opts.scale, false);
-                    break;
-                case 'webp':
-                    er_diagram.renderImage('webp', 1, opts.scale, opts.transparent);
-                    break;
-                case 'svg':
-                    er_diagram.renderSVG();
-                    break;
+            if (opts) {
+                switch (opts.format) {
+                    case 'png':
+                        er_diagram.renderImage('png', 1, opts.scale, opts.transparent);
+                        break;
+                    case 'jpeg':
+                        er_diagram.renderImage('jpeg', 1, opts.scale, false);
+                        break;
+                    case 'webp':
+                        er_diagram.renderImage('webp', 1, opts.scale, opts.transparent);
+                        break;
+                    case 'svg':
+                        er_diagram.renderSVG();
+                        break;
+                }
             }
         });
     });
