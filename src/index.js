@@ -1,6 +1,6 @@
 import { ERDiagram } from "./diagram";
 
-const topOffset = 36;
+const topOffset = 0;
 const bottomOffset = 36;
 
 const er_diagram = new ERDiagram(

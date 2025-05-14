@@ -185,7 +185,8 @@ body:has(#modal[style*="display: block"]) .background {
 /* Menu Bar */
 .menu-bar {
     background-color: #333;
-    display: flex;
+    /* display: flex; */
+    display: none;
 }
 .menu-item {
     position: relative;
@@ -335,7 +336,7 @@ input[type=range]::-ms-thumb {
     bottom: 50px;
     left: 50%;
     transform: translateX(-50%);
-    border-radius: 5px;
+    border-radius: 8px;
 }
 
 #contextmenu {
@@ -362,7 +363,7 @@ input[type=range]::-ms-thumb {
 }
 
 #contextmenu .item:hover {
-    background-color: #f9f9f9;
+    background-color: rgba(0, 0, 0, 0.05);
     border-radius: 8px;
 }
 
@@ -393,4 +394,44 @@ input[type=range]::-ms-thumb {
     background-size: 16px 16px;
     background-repeat: no-repeat;
     background-position: center center;
+}
+
+.toolbar {
+    position: absolute;
+    top: 20px;
+    display: flex;
+    border-radius: 12px;
+    box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
+    padding: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #fff;
+}
+
+.toolbar .button {
+    width: 35px;
+    height: 35px;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 20px;
+    margin: 2px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.toolbar .button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.toolbar .button.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.hline {
+    width: 1px;
+    height: 1.5rem;
+    background-color: #f1f0ff;
+    align-self: center;
+    margin: 0 0.25rem;
 }

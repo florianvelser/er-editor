@@ -336,7 +336,7 @@ export class ERNode {
                 .attr("rx", 12)
                 .attr("width", this.width + gap * 2)
                 .attr("height", 60 + gap * 2)
-                .attr("stroke", "lightgray")
+                .attr("stroke", "#a1a1a1")
                 .attr("stroke-width", 3)
                 .attr("fill", "none");
         }
