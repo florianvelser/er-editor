@@ -1,6 +1,5 @@
 import { HistoryManager } from './history_manager';
 import * as d3 from 'd3';
-import d3SvgToPng from 'd3-svg-to-png';
 import { v4 as uuidv4 } from 'uuid';
 import example_config from './diagram_exampleconfig.json';
 import { JsonFileHandler } from './filehandler';
@@ -27,14 +26,23 @@ export class ERDiagram {
         this.initializeSimulation();
         this.loadDefaultConfig();
         this.addContextMenuButtonListener();
+        this.setName('untitled');
+    }
+
+    setName(name) {
+        this.name = name;
+        document.getElementById("projectname").innerHTML = name + ".json";
     }
 
     /**
      * Initialize the main SVG groups.
      */
     setDimensions(width, height) {
+        this.width = width;
+        this.height = height;
         this.svg.attr('width', width)
             .attr('height', height);
+        this.simulation.force("center", d3.forceCenter(width / 2, height / 2));
     }
 
     /**
@@ -160,18 +168,18 @@ export class ERDiagram {
     }
 
     downloadDocument() {
-        JsonFileHandler.downloadJson(this.getStateSnapshot(), 'er_diagram.json');
+        JsonFileHandler.downloadJson(this.getStateSnapshot(), this.name + '.json');
     }
 
     renderImage(format, quality, scale) {
         // Create an instance of the image renderer.
-        const imageRenderer = new ERDiagramImageRenderer(this, 'projectname');
+        const imageRenderer = new ERDiagramImageRenderer(this, this.name);
         // Delegate the export to the image renderer instance.
         imageRenderer.exportImage(format, quality, scale);
     }
 
     renderSVG() {
-        const imageRenderer = new ERDiagramImageRenderer(this, 'projectname');
+        const imageRenderer = new ERDiagramImageRenderer(this, this.name);
         // Delegate the export to the image renderer instance.
         imageRenderer.downloadStandaloneSVG()
     }
@@ -282,6 +290,7 @@ export class ERDiagram {
     }
 
     clear() {
+        this.historyManager.clear();
         this.loadConfig({
             "nodes": [],
             "links": []
@@ -752,7 +761,7 @@ export class ERDiagram {
 
     onViewChanged() {
         const backToContentButton = document.getElementById("back-to-content");
-        if(this.isContentVisible()) {
+        if(this.isContentVisible() || this.nodes.length === 0) {
             backToContentButton.style.display = 'none';
         } else {
             backToContentButton.style.display = 'block';
