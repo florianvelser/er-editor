@@ -17,7 +17,7 @@ export class ERNode {
             this.y = Math.random() * diagramHeight;
         }
         // Set default dimensions depending on type.
-        switch(this.type) {
+        switch (this.type) {
             case "entity":
                 if (typeof this.width !== 'number') this.width = 120;
                 break;
@@ -40,7 +40,7 @@ export class ERNode {
     removeRightClickListener(listener) {
         this.rightClickListeners = this.rightClickListeners.filter(l => l !== listener);
     }
-    
+
     /**
      * Registers a listener function to be called when the text changes.
      * The listener is called with two parameters: before and after.
@@ -49,7 +49,7 @@ export class ERNode {
     addChangeListener(listener) {
         this.changeListeners.push(listener);
     }
-    
+
     /**
      * Optional: Removes a Change Listener.
      * @param {Function} listener - Listener to be removed.
@@ -66,31 +66,20 @@ export class ERNode {
 
         // Render based on the node type.
         switch (this.type) {
-            case 'entity':
-                this.renderEntity(selection);
-                break;
-            case 'relationship':
-                this.renderRelationship(selection);
-                break;
-            case 'attribute':
-                this.renderAttribute(selection);
-                break;
-            default:
-                console.warn(`Unknown node type: ${this.type}`);
+            case 'entity': this.renderEntity(selection); break;
+            case 'relationship': this.renderRelationship(selection); break;
+            case 'attribute': this.renderAttribute(selection); break;
+            default: console.warn(`Unknown node type: ${this.type}`);
         }
-        // Render the label as a foreignObject with an HTML div.
         this.renderLabel(selection);
         this.adjustSize(selection);
     }
 
     renderEntity(selection) {
         selection.append('rect')
-            .attr('x', -60)
-            .attr('y', -30)
-            .attr('width', 120)
-            .attr('height', 60)
-            .attr('rx', 10)
-            .attr('ry', 10)
+            .attr('x', -60).attr('y', -30)
+            .attr('width', 120).attr('height', 60)
+            .attr('rx', 10).attr('ry', 10)
             .attr('fill', '#ffcc00');
     }
 
@@ -104,10 +93,8 @@ export class ERNode {
 
     renderAttribute(selection) {
         selection.append('ellipse')
-            .attr('cx', 0)
-            .attr('cy', 0)
-            .attr('rx', 50)
-            .attr('ry', 25)
+            .attr('cx', 0).attr('cy', 0)
+            .attr('rx', 50).attr('ry', 25)
             .attr('fill', '#66ccff');
     }
 
@@ -124,6 +111,7 @@ export class ERNode {
             defaultWidth = 100;
             defaultHeight = 50;
         }
+
         const fo = selection.append('foreignObject')
             .attr('class', 'node-label')
             .attr('x', -defaultWidth / 2)
@@ -148,8 +136,50 @@ export class ERNode {
             .style('box-sizing', 'border-box')
             .style('white-space', 'nowrap')
             .html(this.text)
-            .on('dblclick', (event) => this.enableEditing(event, div))
-            .on('contextmenu', (event) => this.contextmenu(event));
+            .on('contextmenu', event => {
+                event.preventDefault();
+                this.contextmenu(event);
+            });
+
+        // --- Touch Events ---
+        const LONG_PRESS_DURATION = 600;
+        const DOUBLE_TAP_MAX_DELAY = 300;
+        let touchTimer = null;
+        let lastTapTime = 0;
+
+        div.on('touchstart', event => {
+            event.preventDefault();
+            touchTimer = setTimeout(() => {
+                this.contextmenu(event);
+                touchTimer = null;
+            }, LONG_PRESS_DURATION);
+        });
+
+        div.on('touchend', event => {
+            event.preventDefault();
+            const now = Date.now();
+            if (touchTimer) {
+                clearTimeout(touchTimer);
+                touchTimer = null;
+            }
+
+            if (now - lastTapTime < DOUBLE_TAP_MAX_DELAY) {
+                this.enableEditing(event, div);
+                lastTapTime = 0;
+            } else {
+                lastTapTime = now;
+            }
+        });
+
+        div.on('touchmove touchcancel', () => {
+            if (touchTimer) {
+                clearTimeout(touchTimer);
+                touchTimer = null;
+            }
+        });
+
+        div.on('dblclick', event => this.enableEditing(event, div));
+
         if (this.primary) {
             div.style('text-decoration', 'underline');
         }
@@ -161,32 +191,25 @@ export class ERNode {
         this.rightClickListeners.forEach(listener => listener(event));
     }
 
-    /**
-     * Enables editing mode for the label div.
-     * @param {Event} event - The double-click event.
-     * @param {d3.Selection} div - The D3 selection of the div element.
-     */
     enableEditing(event, div) {
-        if (event && event.stopPropagation) {
-            event.stopPropagation();
-        }
+        event?.stopPropagation();
         const labelDiv = div || this.labelDiv;
-        if (!labelDiv) {
-            console.error("No label DOM element found that can be edited.");
-            return;
-        }
+        if (!labelDiv) return;
+
         this._originalText = this.text;
         const node = labelDiv.node();
         node.setAttribute("contenteditable", "true");
         node.focus();
+
         const range = document.createRange();
         range.selectNodeContents(node);
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
+
         labelDiv.style('outline', 'none').style('border', 'none');
         labelDiv.on('blur', () => this.disableEditing(labelDiv));
-        labelDiv.on('keydown', (e) => {
+        labelDiv.on('keydown', e => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 node.blur();
@@ -194,20 +217,16 @@ export class ERNode {
         });
     }
 
-    /**
-     * Disables editing mode, updates the text and notifies the diagram if needed.
-     * @param {d3.Selection} div - The D3 selection of the div element.
-     */
     disableEditing(div) {
         const node = div.node();
         node.removeAttribute("contenteditable");
+        const sel = window.getSelection();
+        if (sel) sel.removeAllRanges();
         const newText = div.text();
         if (newText === this._originalText) return;
         const before = this._originalText;
         const after = newText;
-        // Call all registered change listeners
         this.changeListeners.forEach(listener => listener(before, after));
-        // Update the text
         this.text = newText;
         const parentGroup = d3.select(node.parentNode.parentNode);
         this.adjustSize(parentGroup);
@@ -221,6 +240,7 @@ export class ERNode {
     adjustSize(selection) {
         const div = selection.select("foreignObject > div");
         if (div.empty()) return;
+
         const PADDING = 20, MAX_WIDTH = 300, DEFAULT_FONT_SIZE = 14, MIN_FONT_SIZE = 10;
         let currentFontSize = parseFloat(div.style("font-size")) || DEFAULT_FONT_SIZE;
         const nodeEl = div.node();
@@ -228,39 +248,32 @@ export class ERNode {
         nodeEl.style.width = 'fit-content';
         let textWidth = nodeEl.scrollWidth;
         nodeEl.style.width = originalWidth;
+
         if (textWidth > MAX_WIDTH - PADDING) {
             let newFontSize = Math.max(MIN_FONT_SIZE, currentFontSize * (MAX_WIDTH - PADDING) / textWidth);
             div.style("font-size", `${newFontSize}px`);
-            currentFontSize = newFontSize;
-            nodeEl.style.width = 'fit-content';
-            textWidth = nodeEl.scrollWidth;
-            nodeEl.style.width = originalWidth;
         } else {
             div.style("font-size", `${DEFAULT_FONT_SIZE}px`);
-            nodeEl.style.width = 'fit-content';
-            textWidth = nodeEl.scrollWidth;
-            nodeEl.style.width = originalWidth;
         }
+
+        nodeEl.style.width = 'fit-content';
+        textWidth = nodeEl.scrollWidth;
+        nodeEl.style.width = originalWidth;
+
         const newWidth = Math.max(100, textWidth + PADDING);
         selection.select("foreignObject")
             .attr("width", newWidth)
             .attr("x", -newWidth / 2);
+
         switch (this.type) {
-            case "entity":
-                this.adjustEntitySize(selection, newWidth);
-                break;
-            case "attribute":
-                this.adjustAttributeSize(selection, newWidth);
-                break;
-            case "relationship":
-                this.adjustRelationshipSize(selection, newWidth);
-                break;
+            case "entity": this.adjustEntitySize(selection, newWidth); break;
+            case "attribute": this.adjustAttributeSize(selection, newWidth); break;
+            case "relationship": this.adjustRelationshipSize(selection, newWidth); break;
         }
     }
 
     adjustEntitySize(selection, newWidth) {
-        const minWidth = 120;
-        const finalWidth = Math.max(minWidth, newWidth);
+        const finalWidth = Math.max(120, newWidth);
         selection.select("rect")
             .attr("width", finalWidth)
             .attr("x", -finalWidth / 2);
@@ -286,29 +299,25 @@ export class ERNode {
 
     getBoundingBox() {
         switch (this.type) {
-            case "entity":
-                return {
-                    left: this.x - this.width / 2,
-                    right: this.x + this.width / 2,
-                    top: this.y - 30,
-                    bottom: this.y + 30
-                };
-            case "relationship":
-                return {
-                    left: this.x - this.width / 2,
-                    right: this.x + this.width / 2,
-                    top: this.y - 40,
-                    bottom: this.y + 40
-                };
-            case "attribute":
-                return {
-                    left: this.x - this.rx,
-                    right: this.x + this.rx,
-                    top: this.y - 25,
-                    bottom: this.y + 25
-                };
-            default:
-                return { left: this.x, right: this.x, top: this.y, bottom: this.y };
+            case "entity": return {
+                left: this.x - this.width / 2,
+                right: this.x + this.width / 2,
+                top: this.y - 30,
+                bottom: this.y + 30
+            };
+            case "relationship": return {
+                left: this.x - this.width / 2,
+                right: this.x + this.width / 2,
+                top: this.y - 40,
+                bottom: this.y + 40
+            };
+            case "attribute": return {
+                left: this.x - this.rx,
+                right: this.x + this.rx,
+                top: this.y - 25,
+                bottom: this.y + 25
+            };
+            default: return { left: this.x, right: this.x, top: this.y, bottom: this.y };
         }
     }
 
