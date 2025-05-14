@@ -14,7 +14,9 @@
         <input type="file" id="upload-json" style="display:none" accept=".json">
         <div class="menu-item">File
             <div class="dropdown">
-                <a style="background-image: url(https://pro.fontawesome.com/releases/v5.15.4/svgs/light/file-plus.svg);">New Blank</a>
+                <a
+                    style="background-image: url(https://pro.fontawesome.com/releases/v5.15.4/svgs/light/file-plus.svg);">New
+                    Blank</a>
                 <a style="background-image: url(icons/folder-open.svg);">Open</a>
                 <a style="background-image: url(icons/arrow-down-on-square.svg);">Save</a>
             </div>
@@ -42,14 +44,21 @@
         </div>
     </div>
     <div class="toolbar">
-        <div id="diagram-new" class="button new" title="New Document" style="background-image: url(icons/document-plus.svg);"></div>
-        <div id="upload-json-btn" class="button open" title="Open Document" style="background-image: url(icons/folder-open.svg);"></div>
-        <div id="download-json" class="button save" title="Save Document" style="background-image: url(icons/arrow-down-on-square.svg);"></div>
+        <div id="diagram-new" class="button new" title="New Document"
+            style="background-image: url(icons/document-plus.svg);"></div>
+        <div id="upload-json-btn" class="button open" title="Open Document"
+            style="background-image: url(icons/folder-open.svg);"></div>
+        <div id="download-json" class="button save" title="Save Document"
+            style="background-image: url(icons/arrow-down-on-square.svg);"></div>
         <div class="hline"></div>
-        <div id="add-entity" class="button addentity" title="Add Entity" style="background-image: url(icons/plus.svg);"></div>
-        <div id="undo-btn" class="button undo" title="Undo" style="background-image: url(icons/arrow-uturn-left.svg);"></div>
-        <div id="redo-btn" class="button redo" title="Redo" style="background-image: url(icons/arrow-uturn-right.svg);"></div>
-        <div id="fit-content" class="button view" title="View to Content" style="background-image: url(icons/magnifying-glass.svg);"></div>
+        <div id="add-entity" class="button addentity" title="Add Entity" style="background-image: url(icons/plus.svg);">
+        </div>
+        <div id="undo-btn" class="button undo" title="Undo" style="background-image: url(icons/arrow-uturn-left.svg);">
+        </div>
+        <div id="redo-btn" class="button redo" title="Redo" style="background-image: url(icons/arrow-uturn-right.svg);">
+        </div>
+        <div id="fit-content" class="button view" title="View to Content"
+            style="background-image: url(icons/magnifying-glass.svg);"></div>
         <div class="hline"></div>
         <div id="export-png" class="button export" title="Export" style="background-image: url(icons/photo.svg);"></div>
     </div>
@@ -66,20 +75,25 @@
     <div id="context-menu"></div>
     <!-- Modal for text input and select menu -->
     <div class="background"></div>
-    <div id="modal">
-        <div id="modal-title"></div>
-        <div id="modal-content"></div>
-        <div style="text-align: right;">
-            <button id="modal-ok">OK</button>
-            <button id="modal-cancel">Cancel</button>
-        </div>
-    </div>
     <div id="contextmenu" tabindex="-1">
         <div class="item" id="add-attribute-button" style="background-image: url(icons/plus.svg);">Add Attribute</div>
         <div class="item" id="set-primary-key" style="background-image: url(icons/key.svg);">Set as primary key</div>
-        <div class="item" id="delete-button" style="background-image: url(icons/trash-red.svg); color: #E53935;">Delete</div>
+        <div class="item" id="delete-button" style="background-image: url(icons/trash-red.svg); color: #E53935;">Delete
+        </div>
     </div>
     <script type="module" src="index.js"></script>
+    <div id="modal" tabindex="-1">
+        <div class="modal-backdrop" id="modal-backdrop"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <h2 id="modal-title" class="modal-title"></h2>
+            <p class="modal-text"></p>
+            <div class="modal-control"></div> <!-- placeholder for control -->
+            <div class="modal-actions">
+                <button class="btn cancel" id="modal-cancel">Cancel</button>
+                <button class="btn confirm" id="modal-confirm">Confirm</button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

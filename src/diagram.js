@@ -6,6 +6,7 @@ import { JsonFileHandler } from './filehandler';
 import { ERNode } from './ernode';
 import { Contextmenu } from "./contextmenu";
 import { ERDiagramImageRenderer } from './renderer';
+import { SelectModal } from './modal';
 
 const icons = import.meta.glob('/icons/*.svg', { eager: true, query: '?url', import: 'default' });
 
@@ -32,6 +33,10 @@ export class ERDiagram {
     setName(name) {
         this.name = name;
         document.getElementById("projectname").innerHTML = name + ".json";
+    }
+
+    getName(name) {
+        return this.name;
     }
 
     /**
@@ -241,14 +246,14 @@ export class ERDiagram {
         const linkLabelData = this.links.filter(l => l.cardinality);
         const linkTextSelection = this.gLinks.selectAll('.linkText')
             .data(linkLabelData, d => `${d.source.id || d.source}-${d.target.id || d.target}`);
-    
+
         linkTextSelection.exit().remove();
-    
+
         const linkTextEnter = linkTextSelection.enter().append('text')
             .style('transform', 'translate(2px, 3px)')
             .attr('class', 'linkText')
             .attr('text-anchor', 'middle');
-    
+
         const linkText = linkTextEnter.merge(linkTextSelection)
             .text(d => d.cardinality)
             .style('transform', 'translate(0px,3px)')
@@ -271,8 +276,10 @@ export class ERDiagram {
 
         // Possible cardinalites
         const cardinalities = ['1', 'n', 'm'];
-        
-        linkText.on('wheel', function(event, d) {
+
+        const self = this;
+
+        linkText.on('wheel', function (event, d) {
             event.stopPropagation();
             let currentIndex = cardinalities.indexOf(this.textContent);
             if (currentIndex === -1) currentIndex = 0;
@@ -284,9 +291,30 @@ export class ERDiagram {
                 currentIndex = (currentIndex + 1) % cardinalities.length;
             }
 
+            self.historyManager.save(self.getStateSnapshot());
             this.textContent = cardinalities[currentIndex];
             d.cardinality = cardinalities[currentIndex];
         });
+
+        linkText.on('click', function (event, d) {
+            event.stopPropagation();
+            const dlg = new SelectModal({
+                title: 'Change Cardinality',
+                text: 'Select the new cardinality for the relation and hit confirm.',
+                options: ['1', 'n', 'm'],
+                defaultOption: d.cardinality
+            });
+
+            dlg.show().then(result => {
+                if (result) {
+                    self.historyManager.save(self.getStateSnapshot());
+                    d.cardinality = result;
+                    this.textContent = result;
+                }
+            });
+        });
+
+
     }
 
     clear() {
@@ -458,16 +486,16 @@ export class ERDiagram {
         if (this.nodes.length === 0) return;
         const bbox = this.getDiagramBBox();
         const svgRect = this.svg.node().getBoundingClientRect();
-    
+
         const scaleX = svgRect.width / bbox.width;
         const scaleY = svgRect.height / bbox.height;
         const scale = Math.max(0.1, Math.min(scaleX, scaleY, 1)); // Maximum 1x scaling
-    
+
         const translateX = (svgRect.width - bbox.width * scale) / 2 - bbox.minX * scale;
         const translateY = (svgRect.height - bbox.height * scale) / 2 - bbox.minY * scale;
-    
+
         const transform = d3.zoomIdentity.translate(translateX, translateY).scale(scale);
-    
+
         this.svg.transition()
             .duration(750)
             .call(this.zoom.transform, transform);
@@ -477,25 +505,25 @@ export class ERDiagram {
         if (this.nodes.length === 0) return false;
         const bbox = this.getDiagramBBox();
         const transform = d3.zoomTransform(this.svg.node());
-    
+
         // Transform the bounding box coordinates
         const x1 = transform.applyX(bbox.minX) + 20;
         const y1 = transform.applyY(bbox.minY) + 20;
         const x2 = transform.applyX(bbox.minX + bbox.width) - 20;
         const y2 = transform.applyY(bbox.minY + bbox.height) - 20;
-    
+
         // Get SVG dimensions
         const svgWidth = +this.svg.attr("width");
         const svgHeight = +this.svg.attr("height");
-    
+
         // Return true if any part of the box is within the viewable area
         return !(x2 < 0 || x1 > svgWidth || y2 < 0 || y1 > svgHeight);
     }
-    
+
 
     addAttributeNode() {
         this.historyManager.save(this.getStateSnapshot());
-        if(this.contextmenuhandler.getContextNode().type != 'entity' && this.contextmenuhandler.getContextNode().type != 'relationship') {
+        if (this.contextmenuhandler.getContextNode().type != 'entity' && this.contextmenuhandler.getContextNode().type != 'relationship') {
             return;
         }
 
@@ -761,7 +789,7 @@ export class ERDiagram {
 
     onViewChanged() {
         const backToContentButton = document.getElementById("back-to-content");
-        if(this.isContentVisible() || this.nodes.length === 0) {
+        if (this.isContentVisible() || this.nodes.length === 0) {
             backToContentButton.style.display = 'none';
         } else {
             backToContentButton.style.display = 'block';

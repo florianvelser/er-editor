@@ -1,4 +1,5 @@
 import { ERDiagram } from "./diagram";
+import { InputModal } from "./modal";
 
 const topOffset = 0;
 const bottomOffset = 36;
@@ -24,6 +25,7 @@ const exportPNGButton = document.getElementById('export-png');
 const exportWEBPButton = document.getElementById('export-webp');
 const exportJPEGButton = document.getElementById('export-jpeg');
 const exportSVGButton = document.getElementById('export-svg');
+const renameProjectButton = document.getElementById('projectname');
 
 zoomRange.value = 50;
 
@@ -95,4 +97,13 @@ exportWEBPButton.addEventListener("click", function () {
 
 exportSVGButton.addEventListener("click", function () {
     er_diagram.renderSVG();
+});
+
+renameProjectButton.addEventListener("click", function () {
+    const input = new InputModal({ title: 'Rename', text: 'Enter new name', placeholder: 'Name...', defaultValue: er_diagram.getName() });
+    input.show().then(value => {
+        if (value) {
+            er_diagram.setName(value);
+        }
+    });
 });
