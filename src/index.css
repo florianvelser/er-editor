@@ -140,6 +140,10 @@ body:has(#modal[style*="display: block"]) .background {
     z-index: -1000;
 }
 
+svg {
+    border: none;
+}
+
 /* Menu Bar */
 .menu-bar {
     background-color: #333;
@@ -538,4 +542,211 @@ input[type=range]::-ms-thumb {
 
 #modal input:focus {
     border-color: rgba(0, 0, 0, 0.15);
+}
+/* ExportModal Responsive Styling */
+#export-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100svh;
+    z-index: 1000;
+}
+
+#export-modal .modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+#export-modal .modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fff;
+    padding: 20px;
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+    border-radius: 10px;
+    max-width: 900px;
+    width: calc(100% - 40px);
+    box-sizing: border-box;
+}
+
+.export-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.export-image {
+    flex: 0 0 auto;
+    width: 460px;
+    height: 300px;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 4px 12px;
+}
+
+.export-image.checkered {
+    background: url('images/checkered.png');
+}
+
+.export-options {
+    flex: 1 1 360px;
+    display: flex;
+    flex-direction: column;
+}
+
+.export-options .modal-title {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 1.25rem;
+}
+
+.export-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+/* Toggle Switch (größer + sichtbarer Kreis) */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 28px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.switch .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 14px;
+    transition: background-color 0.2s;
+}
+
+.switch .slider:before {
+    content: "";
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    top: 2px;
+    background-color: #fff;
+    border-radius: 50%;
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 2px 6px;
+    transition: transform 0.2s;
+}
+
+.switch input:checked + .slider {
+    background-color: #212121;
+}
+
+.switch input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+/* Segmented Control (klein) */
+.segmented-control.small {
+    position: relative;
+    display: flex;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    overflow: hidden;
+    padding: 2px;
+    margin-bottom: 0;
+}
+
+.segmented-control.small .segment {
+    flex: 1;
+    text-align: center;
+    padding: 6px 12px;
+    cursor: pointer;
+    user-select: none;
+    z-index: 1;
+    font-size: 0.9rem;
+}
+
+.segmented-control.small .segment.active {
+    color: #000;
+}
+
+.segmented-control.small .indicator {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 0;
+    width: 0; /* JS sets width on init */
+    background-color: #fff;
+    border-radius: 6px;
+    transition: left 0.3s ease, width 0.3s ease;
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 4px 12px;
+}
+
+/* Export-Buttons */
+.export-actions {
+    margin-top: auto;
+    display: flex;
+    gap: 12px;
+}
+
+.export-actions .btn {
+    flex: 1;
+    padding: 8px 0;
+    border: none;
+    border-radius: 6px;
+    background-color: #212121;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+.export-actions .btn:hover {
+    background-color: #424242;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 768px) {
+    .export-body {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .export-image, 
+    .export-options {
+        width: 100%;
+        flex: none;
+    }
+
+    .export-image {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .export-options {
+        margin-top: 20px;
+    }
+
+    .export-actions {
+        flex-direction: column;
+    }
 }

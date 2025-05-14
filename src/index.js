@@ -1,5 +1,5 @@
 import { ERDiagram } from "./diagram";
-import { InputModal } from "./modal";
+import { InputModal, ExportModal } from "./modal";
 
 const topOffset = 0;
 const bottomOffset = 36;
@@ -84,7 +84,25 @@ backToContentButton.addEventListener("click", function () {
 });
 
 exportPNGButton.addEventListener("click", function () {
-    er_diagram.renderImage('png', 1, 2);
+    er_diagram.getRenderPreview().then(dataUrl => {
+        const exp = new ExportModal({ imageSrc: dataUrl });
+        exp.show().then(opts => {
+            switch (opts.format) {
+                case 'png':
+                    er_diagram.renderImage('png', 1, opts.scale, opts.transparent);
+                    break;
+                case 'jpeg':
+                    er_diagram.renderImage('jpeg', 1, opts.scale, false);
+                    break;
+                case 'webp':
+                    er_diagram.renderImage('webp', 1, opts.scale, opts.transparent);
+                    break;
+                case 'svg':
+                    er_diagram.renderSVG();
+                    break;
+            }
+        });
+    });
 });
 
 exportJPEGButton.addEventListener("click", function () {
