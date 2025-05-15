@@ -35,7 +35,7 @@ export class ERDiagram {
         document.getElementById("projectname").innerHTML = name + ".json";
     }
 
-    getName(name) {
+    getName() {
         return this.name;
     }
 
@@ -193,6 +193,9 @@ export class ERDiagram {
         // Links remain unchanged so that d3.forceLink can resolve the IDs.
         this.links = config.links.map(l => ({ ...l }));
         this.updateGraph();
+        setTimeout(() => {
+            this.fitToContent();
+        }, 50);
     }
 
     uploadDocument() {

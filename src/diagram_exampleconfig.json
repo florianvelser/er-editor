@@ -3,32 +3,44 @@
         {
             "id": "bad9ff34-73d2-4670-aa1e-70b59e2e9170",
             "type": "entity",
-            "text": "Entity"
+            "text": "Entity",
+            "x": 1512.7318177045365,
+            "y": 483.69963653684783
         },
         {
             "id": "14a380cc-d050-4f01-be12-b0c46351f11a",
             "type": "entity",
-            "text": "Entity"
+            "text": "Entity",
+            "x": 1166.2449883957042,
+            "y": 616.2872319131687
         },
         {
             "id": "ea2ecc23-07e9-46a5-8e6b-9e91db0d78ad",
             "type": "relationship",
-            "text": "Relation"
+            "text": "Relation",
+            "x": 1285.814693119228,
+            "y": 473.58158930019437
         },
         {
             "id": "a361fa2e-b497-4e7b-90bc-ba0d4689a0cc",
             "type": "attribute",
-            "text": "Attribute"
+            "text": "Attribute",
+            "x": 1131.2407766606166,
+            "y": 782.9065756919858
         },
         {
             "id": "3fb6b16f-e11b-4de3-9096-00f46bfeb89a",
             "type": "attribute",
-            "text": "Attribute"
+            "text": "Attribute",
+            "x": 1634.4017225443044,
+            "y": 622.4228371562531
         },
         {
             "id": "c3c2da63-5a45-43b1-9520-8bd7f8383392",
             "type": "attribute",
-            "text": "Attribute"
+            "text": "Attribute",
+            "x": 949.5660500328338,
+            "y": 666.1019260152676
         }
     ],
     "links": [
