@@ -62,17 +62,14 @@
         <div class="hline"></div>
         <div id="export-png" class="button export" title="Export" style="background-image: url(icons/image-download.svg);"></div>
     </div>
+    <div class="toolbar zoom">
+        <div class="button" id="decrease-zoom" style="background-image: url(icons/zoom-out.svg);"></div>
+        <div id="zoom-text">100%</div>
+        <div class="button" id="increase-zoom" style="background-image: url(icons/zoom-in.svg);"></div>
+    </div>
+    <div id="projectname"></div>
     <svg></svg>
     <button id="back-to-content" style="display: none;">Back to content</button>
-    <div class="footer">
-        <div id="projectname"></div>
-        <div class="zoom">
-            <input type="range" min="0" max="100" step="1" value="50" id="zoom-level" />
-            <div id="zoom-text">100%</div>
-        </div>
-    </div>
-    <!-- Context menu (is filled dynamically) -->
-    <div id="context-menu"></div>
     <!-- Modal for text input and select menu -->
     <div class="background"></div>
     <div id="contextmenu" tabindex="-1">

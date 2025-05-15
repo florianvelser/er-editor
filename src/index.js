@@ -1,16 +1,12 @@
 import { ERDiagram } from "./diagram";
 import { InputModal, ExportModal, ConfirmModal } from "./modal";
 
-const topOffset = 0;
-const bottomOffset = 36;
-
 const er_diagram = new ERDiagram(
     "svg",
     window.innerWidth,
-    document.documentElement.clientHeight - topOffset - bottomOffset
+    document.documentElement.clientHeight
 )
 
-const zoomRange = document.getElementById('zoom-level');
 const zoomText = document.getElementById('zoom-text');
 const downloadDocumentButton = document.getElementById('download-json');
 const uploadDocumentButton = document.getElementById('upload-json-btn');
@@ -27,23 +23,17 @@ const exportJPEGButton = document.getElementById('export-jpeg');
 const exportSVGButton = document.getElementById('export-svg');
 const renameProjectButton = document.getElementById('projectname');
 
-zoomRange.value = 50;
-
-zoomRange.addEventListener("input", function() {
-    er_diagram.setZoom(zoomRange.value);
-}, false);
+const decreaseZoomButton = document.getElementById('decrease-zoom');
+const increaseZoomButton = document.getElementById('increase-zoom');
 
 er_diagram.onZoom = function(zoom) {
-    const minLog = Math.log10(0.1);
-    const maxLog = Math.log10(10);
-    zoomRange.value = ((Math.log10(zoom) - minLog) / (maxLog - minLog)) * 100;
     zoomText.innerText = Math.round(zoom * 100) + "%";
 }
 
 window.addEventListener("resize", function () {
     er_diagram.setDimensions(
         window.innerWidth,
-        window.innerHeight - topOffset - bottomOffset
+        window.innerHeight
     )
 });
 
@@ -65,6 +55,14 @@ newDocumentButton.addEventListener("click", function () {
             er_diagram.clear();
         }
     });
+});
+
+increaseZoomButton.addEventListener("click", function () {
+    er_diagram.increaseZoom();
+});
+
+decreaseZoomButton.addEventListener("click", function () {
+    er_diagram.decreaseZoom();
 });
 
 addEntityButton.addEventListener("click", function () {

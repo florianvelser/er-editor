@@ -116,6 +116,54 @@ export class ERDiagram {
         this.svg.call(this.zoom.transform, newTransform);
     }
 
+    _zoomBy(factor) {
+        const svgEl = this.svg.node();
+        const extent = this.zoom.scaleExtent();           // [min, max]
+
+        const t0 = d3.zoomTransform(svgEl);         // aktueller Transform
+        const currentK = t0.k;
+        let targetK = currentK * factor;
+
+        // Begrenzen auf erlaubten Bereich
+        targetK = Math.max(extent[0], Math.min(extent[1], targetK));
+        if (targetK === currentK) return;
+
+        // Fester Mittelpunkt: das SVG-Zentrum
+        const [cx, cy] = this.getViewportCenter();
+
+        // Feste Dauer
+        const duration = 300;
+
+        // Unterbricht ggf. laufende Transition
+        this.svg.interrupt();
+
+        // Startet neue Zoom-Transition mit fester Dauer
+        this.svg.transition()
+            .duration(duration)
+            .ease(d3.easeCubicOut)                    // sanftes Auslaufen
+            .call(this.zoom.scaleTo, targetK, [cx, cy]);
+    }
+
+    increaseZoom(factor = 1.25) {
+        this._zoomBy(factor);
+    }
+
+    decreaseZoom(factor = 0.8) {
+        this._zoomBy(factor);
+    }
+
+    getViewportCenter() {
+        // Versuche zuerst ein viewBox, falle sonst auf Bounding-Box zurück
+        const svgEl = this.svg.node();
+        if (svgEl.viewBox && svgEl.viewBox.baseVal && svgEl.viewBox.baseVal.width) {
+            const vb = svgEl.viewBox.baseVal;
+            return [vb.x + vb.width / 2, vb.y + vb.height / 2];
+        } else {
+            const { width, height } = svgEl.getBoundingClientRect();
+            return [width / 2, height / 2];
+        }
+    }
+
     /**
      * Initialize the force simulation.
      */
