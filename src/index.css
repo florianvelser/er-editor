@@ -312,7 +312,8 @@ input[type=range]::-ms-thumb {
     bottom: 50px;
     left: 50%;
     transform: translateX(-50%);
-    border-radius: 8px;
+    border-radius: 12px;
+    padding: 12px 16px;
 }
 
 #contextmenu {
@@ -457,6 +458,10 @@ input[type=range]::-ms-thumb {
     color: #333;
 }
 
+#modal:has(input) .modal-text {
+    margin: 0 0 8px;
+}
+
 /* Segmented Control */
 .segmented-control {
     position: relative;
@@ -528,12 +533,12 @@ input[type=range]::-ms-thumb {
 
 #modal input {
     appearance: none;
-    border: 2px solid rgba(0, 0, 0, 0.05);
+    border: none;
     outline: none;
     width: 100%;
     padding: 8px 12px;
     font-size: 16px;
-    margin-bottom: 10px;
+    margin-bottom: 16px;
     border-radius: 6px;
     background-color: rgba(0, 0, 0, 0.05);
     font-family: "Inter", sans-serif;
@@ -590,9 +595,16 @@ input[type=range]::-ms-thumb {
     object-fit: contain;
     border-radius: 8px;
     box-shadow: rgba(149, 157, 165, 0.2) 0px 4px 12px;
+    background-color: #fff;
+    display: block;
 }
 
 .export-image.checkered {
+    background-color: transparent;
+}
+
+.export-body .image {
+    border-radius: 8px;
     background: url('images/checkered.png');
 }
 
@@ -718,6 +730,11 @@ input[type=range]::-ms-thumb {
     cursor: pointer;
     font-size: 0.9rem;
     transition: background-color 0.2s;
+    background-image: url(icons/download.svg);
+    background-repeat: no-repeat;
+    background-size: 18px;
+    background-position: 10px center;
+    padding-left: 18px;
 }
 
 .export-actions .btn:hover {

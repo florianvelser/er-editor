@@ -270,3 +270,26 @@ export class ExportModal {
         if (this._promiseResolve) { this._promiseResolve(result); this._promiseResolve = null; }
     }
 }
+
+export class ConfirmModal extends ModalBase {
+    /**
+     * @param {{ title?: string, text?: string }} opts 
+     */
+    constructor(opts = {}) {
+        super(opts);
+        this.modal = document.getElementById('modal');
+        this.controlContainer = this.modal.querySelector('.modal-control');
+    }
+
+    renderControl() {
+        this.controlContainer.innerHTML = '';
+    }
+
+    getResult() {
+        return true;
+    }
+
+    show() {
+        return super.show().then(result => result === true);
+    }
+}

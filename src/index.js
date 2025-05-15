@@ -1,5 +1,5 @@
 import { ERDiagram } from "./diagram";
-import { InputModal, ExportModal } from "./modal";
+import { InputModal, ExportModal, ConfirmModal } from "./modal";
 
 const topOffset = 0;
 const bottomOffset = 36;
@@ -56,7 +56,15 @@ uploadDocumentButton.addEventListener("click", function () {
 });
 
 newDocumentButton.addEventListener("click", function () {
-    er_diagram.clear();
+    const confirm = new ConfirmModal({
+        title: 'New document',
+        text: 'Are you sure you want to create a new document? The current document wont be saved.'
+    });
+    confirm.show().then(confirmed => {
+        if (confirmed) {
+            er_diagram.clear();
+        }
+    });
 });
 
 addEntityButton.addEventListener("click", function () {

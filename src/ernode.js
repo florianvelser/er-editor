@@ -215,6 +215,10 @@ export class ERNode {
                 node.blur();
             }
         });
+        labelDiv.on('input', e => {
+            const parentGroup = d3.select(node.parentNode.parentNode);
+            this.adjustSize(parentGroup);
+        });
     }
 
     disableEditing(div) {
