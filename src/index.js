@@ -14,13 +14,9 @@ const newDocumentButton = document.getElementById('diagram-new');
 const addEntityButton = document.getElementById('add-entity');
 const undoButton = document.getElementById('undo-btn');
 const redoButton = document.getElementById('redo-btn');
-const resetViewButton = document.getElementById('reset-view');
 const viewFitContentButton = document.getElementById('fit-content');
 const backToContentButton = document.getElementById('back-to-content');
-const exportPNGButton = document.getElementById('export-png');
-const exportWEBPButton = document.getElementById('export-webp');
-const exportJPEGButton = document.getElementById('export-jpeg');
-const exportSVGButton = document.getElementById('export-svg');
+const exportButton = document.getElementById('export-png');
 const renameProjectButton = document.getElementById('projectname');
 
 const decreaseZoomButton = document.getElementById('decrease-zoom');
@@ -77,10 +73,6 @@ redoButton.addEventListener("click", function () {
     er_diagram.redo();
 });
 
-resetViewButton.addEventListener("click", function () {
-    er_diagram.resetView();
-});
-
 viewFitContentButton.addEventListener("click", function () {
     er_diagram.fitToContent();
 });
@@ -89,7 +81,7 @@ backToContentButton.addEventListener("click", function () {
     er_diagram.fitToContent();
 });
 
-exportPNGButton.addEventListener("click", function () {
+exportButton.addEventListener("click", function () {
     er_diagram.getRenderPreview().then(dataUrl => {
         const exp = new ExportModal({ imageSrc: dataUrl });
         exp.show().then(opts => {
@@ -111,18 +103,6 @@ exportPNGButton.addEventListener("click", function () {
             }
         });
     });
-});
-
-exportJPEGButton.addEventListener("click", function () {
-    er_diagram.renderImage('jpeg', 1, 2);
-});
-
-exportWEBPButton.addEventListener("click", function () {
-    er_diagram.renderImage('webp', 1, 2);
-});
-
-exportSVGButton.addEventListener("click", function () {
-    er_diagram.renderSVG();
 });
 
 renameProjectButton.addEventListener("click", function () {

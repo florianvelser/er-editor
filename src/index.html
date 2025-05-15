@@ -10,39 +10,6 @@
 </head>
 
 <body>
-    <div class="menu-bar">
-        <input type="file" id="upload-json" style="display:none" accept=".json">
-        <div class="menu-item">File
-            <div class="dropdown">
-                <a
-                    style="background-image: url(https://pro.fontawesome.com/releases/v5.15.4/svgs/light/file-plus.svg);">New
-                    Blank</a>
-                <a style="background-image: url(icons/folder-open.svg);">Open</a>
-                <a style="background-image: url(icons/arrow-down-on-square.svg);">Save</a>
-            </div>
-        </div>
-        <div class="menu-item">Edit
-            <div class="dropdown">
-                <a style="background-image: url(icons/plus.svg);">Add new Entity</a>
-                <a style="background-image: url(icons/arrow-uturn-left.svg);">Undo</a>
-                <a style="background-image: url(icons/arrow-uturn-right.svg);">Redo</a>
-            </div>
-        </div>
-        <div class="menu-item">View
-            <div class="dropdown">
-                <a id="reset-view" style="background-image: url(icons/magnifying-glass.svg);">Reset View</a>
-                <a style="background-image: url(icons/fit.svg);">Fit Content</a>
-            </div>
-        </div>
-        <div class="menu-item">Export
-            <div class="dropdown">
-                <a style="background-image: url(icons/photo.svg);">Export PNG</a>
-                <a id="export-webp" style="background-image: url(icons/photo.svg);">Export WEBP</a>
-                <a id="export-jpeg" style="background-image: url(icons/photo.svg);">Export JPEG</a>
-                <a id="export-svg" style="background-image: url(icons/photo.svg);">Export SVG</a>
-            </div>
-        </div>
-    </div>
     <div class="toolbar">
         <div id="diagram-new" class="button new" title="New Document"
             style="background-image: url(icons/file.svg);"></div>
@@ -70,8 +37,6 @@
     <div id="projectname"></div>
     <svg></svg>
     <button id="back-to-content" style="display: none;">Back to content</button>
-    <!-- Modal for text input and select menu -->
-    <div class="background"></div>
     <div id="contextmenu" tabindex="-1">
         <div class="item" id="add-attribute-button" style="background-image: url(icons/plus.svg);">Add Attribute</div>
         <div class="item" id="set-primary-key" style="background-image: url(icons/key.svg);">Set as primary key</div>

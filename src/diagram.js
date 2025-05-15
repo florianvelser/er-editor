@@ -494,8 +494,6 @@ export class ERDiagram {
 
             this.contextmenuhandler.setPosition(event.pageX, event.pageY);
             this.contextmenuhandler.show(node);
-
-            console.log("Rechtsklick auf ERNode ausgelöst!", event);
         });
         node.addChangeListener((before, after) => {
             this.historyManager.save(this.getStateSnapshot());

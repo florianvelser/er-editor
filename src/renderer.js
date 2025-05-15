@@ -43,7 +43,7 @@ export class ERDiagramImageRenderer {
         // Create a watermark element.
         const svgNS = "http://www.w3.org/2000/svg";
         const watermark = document.createElementNS(svgNS, "text");
-        watermark.textContent = "Created with ermodell";
+        watermark.textContent = "Created with erditor";
         watermark.setAttribute("x", "5");
         watermark.setAttribute("y", bbox.height - 5);
         watermark.setAttribute("dominant-baseline", "text-after-edge");
@@ -145,6 +145,19 @@ export class ERDiagramImageRenderer {
             line.setAttribute('stroke-linecap', 'round');
             line.setAttribute('stroke', '#999');
         });
+
+        // Create a watermark element.
+        const svgNS = "http://www.w3.org/2000/svg";
+        const watermark = document.createElementNS(svgNS, "text");
+        watermark.textContent = "Created with erditor";
+        watermark.setAttribute("x", "5");
+        watermark.setAttribute("y", bbox.height - 5);
+        watermark.setAttribute("dominant-baseline", "text-after-edge");
+        watermark.style.fontSize = "10px";
+        watermark.setAttribute("fill", "rgba(0,0,0,0.5)");
+
+        // Append the watermark to the cloned SVG.
+        clonedSvg.appendChild(watermark);
 
         // 4) foreignObject entfernen & Text extrahieren
         await this._convertForeignObjects(clonedSvg);
