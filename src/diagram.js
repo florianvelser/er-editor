@@ -573,9 +573,8 @@ export class ERDiagram {
 
     addAttributeNode() {
         this.historyManager.save(this.getStateSnapshot());
-        if (this.contextmenuhandler.getContextNode().type != 'entity' && this.contextmenuhandler.getContextNode().type != 'relationship') {
-            return;
-        }
+        const parent = this.contextmenuhandler.getContextNode();
+        if (parent.type != 'entity' && parent.type != 'relationship') return;
 
         const newId = uuidv4();
 
@@ -585,11 +584,15 @@ export class ERDiagram {
             text: 'Attribute'
         });
 
+        const OFFSET = 80;
+        newAttr.x = parent.x + OFFSET;
+        newAttr.y = parent.y;
+
         this.nodes.push(newAttr);
         this.addContextMenuListener(newAttr);
 
         this.links.push({
-            source: this.contextmenuhandler.getContextNode().id,
+            source: parent.id,
             target: newId
         });
 
