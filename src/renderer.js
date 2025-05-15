@@ -1,5 +1,6 @@
 import d3SvgToPng from 'd3-svg-to-png';
 import opentype from 'opentype.js';
+import interFontUrl from './fonts/Inter_28pt-Regular.ttf';
 
 /**
  * Class for exporting an ERDiagram instance as an image.
@@ -12,7 +13,7 @@ export class ERDiagramImageRenderer {
     constructor(diagram, projectName) {
         this.diagram = diagram;
         this.projectName = projectName;
-        this.interFontUrl = 'fonts/Inter_28pt-Regular.ttf';
+        this.interFontUrl = interFontUrl;
     }
 
     /**
