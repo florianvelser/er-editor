@@ -13,9 +13,27 @@ export class Contextmenu {
     }
 
     show(node) {
-        this.contextnode = node
-        this.element.style.display = 'block';
-        this.element.focus();
+        const isAttribute = node.type === 'attribute';
+        const primaryBtn = document.getElementById('set-primary-key');
+        const addBtn     = document.getElementById('add-attribute-button');
+        primaryBtn.style.display = isAttribute ? 'block' : 'none';
+        addBtn.style.display     = isAttribute ? 'none'  : 'block';
+    
+        this.contextnode = node;
+        const menu = this.element;
+        menu.style.display = 'block';
+    
+        const right = menu.offsetLeft + menu.offsetWidth;
+        const bottom = menu.offsetTop + menu.offsetHeight;
+        const overflowX = right  > window.innerWidth;
+        const overflowY = bottom > window.innerHeight;
+    
+        const tx = overflowX ? -100 : 0;
+        const ty = overflowY ? -100 : 0;
+    
+        menu.style.transform = `translate(${tx}%, ${ty}%)`;
+    
+        menu.focus();
     }
 
     hide() {
