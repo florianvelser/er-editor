@@ -295,16 +295,21 @@ input[type=range]::-ms-thumb {
     width: 46px;
     text-align: center;
     font-size: 14px;
+    align-self: center;
+    font-weight: 500;
+    padding: 9px 0;
+    border-radius: 8px;
+    cursor: pointer;
 }
 
 #projectname {
     padding: 0 12px;
     line-height: 36px;
     cursor: pointer;
-}
-
-#projectname:hover {
-    background-color: #e2e2e2;
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 #back-to-content {
@@ -383,6 +388,13 @@ input[type=range]::-ms-thumb {
     left: 50%;
     transform: translateX(-50%);
     background-color: #fff;
+}
+
+.toolbar.zoom {
+    top: auto;
+    bottom: 20px;
+    left: 20px;
+    transform: none;
 }
 
 .toolbar .button {
