@@ -1,3 +1,7 @@
+import { easeBackOut } from 'd3-ease';
+
+const SCALE_ANIMATION_DURATION = 200;
+
 /**
  * Custom class representing a node in the ER diagram.
  */
@@ -6,6 +10,7 @@ export class ERNode {
         Object.assign(this, config);
         // Array for registered Right Click Listeners
         this.rightClickListeners = [];
+        this.touchMoveListeners = [];
         // Array for registered Change Listeners
         this.changeListeners = [];
 
@@ -37,8 +42,16 @@ export class ERNode {
         this.rightClickListeners.push(listener);
     }
 
+    addTouchMoveListener(listener) {
+        this.touchMoveListeners.push(listener);
+    }
+
     removeRightClickListener(listener) {
         this.rightClickListeners = this.rightClickListeners.filter(l => l !== listener);
+    }
+
+    removeTouchMoveListener(listener) {
+        this.touchMoveListeners = this.touchMoveListeners.filter(l => l !== listener);
     }
 
     /**
@@ -64,15 +77,19 @@ export class ERNode {
         // Clear previous contents.
         selection.selectAll('*').remove();
 
+        // Inner group for scaling
+        const inner = selection.append('g')
+            .attr('class', 'node-inner');
+
         // Render based on the node type.
         switch (this.type) {
-            case 'entity': this.renderEntity(selection); break;
-            case 'relationship': this.renderRelationship(selection); break;
-            case 'attribute': this.renderAttribute(selection); break;
+            case 'entity': this.renderEntity(inner); break;
+            case 'relationship': this.renderRelationship(inner); break;
+            case 'attribute': this.renderAttribute(inner); break;
             default: console.warn(`Unknown node type: ${this.type}`);
         }
-        this.renderLabel(selection);
-        this.adjustSize(selection);
+        this.renderLabel(inner);
+        this.adjustSize(inner);
     }
 
     renderEntity(selection) {
@@ -142,27 +159,43 @@ export class ERNode {
             });
 
         // --- Touch Events ---
-        const LONG_PRESS_DURATION = 600;
+        const LONG_PRESS_DURATION = 500;
         const DOUBLE_TAP_MAX_DELAY = 300;
         let touchTimer = null;
+        let touchTimer_scale_animation = null;
         let lastTapTime = 0;
+        let longPressTriggered = false;
 
         div.on('touchstart', event => {
             event.preventDefault();
+            this.highlight();
+            longPressTriggered = false;
             touchTimer = setTimeout(() => {
                 this.contextmenu(event);
+                longPressTriggered = true;
                 touchTimer = null;
             }, LONG_PRESS_DURATION);
+            touchTimer_scale_animation = setTimeout(() => {
+                this.setScale(1.15);
+                touchTimer_scale_animation = null;
+            }, LONG_PRESS_DURATION-SCALE_ANIMATION_DURATION);
         });
 
         div.on('touchend', event => {
             event.preventDefault();
+            this.removeHighlight();
             const now = Date.now();
             if (touchTimer) {
                 clearTimeout(touchTimer);
+                clearTimeout(touchTimer_scale_animation);
                 touchTimer = null;
+                touchTimer_scale_animation = null;
             }
 
+            if (!longPressTriggered) {
+                this.setScale(1);
+            }
+            // Double-Tap fürs Editieren
             if (now - lastTapTime < DOUBLE_TAP_MAX_DELAY) {
                 this.enableEditing(event, div);
                 lastTapTime = 0;
@@ -171,10 +204,16 @@ export class ERNode {
             }
         });
 
-        div.on('touchmove touchcancel', () => {
+        div.on('touchmove touchcancel', (event) => {
+            this.touchMoveListeners.forEach(listener => listener(event));
+            this.removeHighlight();
             if (touchTimer) {
                 clearTimeout(touchTimer);
                 touchTimer = null;
+            }
+            if (touchTimer_scale_animation) {
+                clearTimeout(touchTimer_scale_animation);
+                touchTimer_scale_animation = null;
             }
         });
 
@@ -188,7 +227,28 @@ export class ERNode {
     }
 
     contextmenu(event) {
+        this.removeHighlight();
         this.rightClickListeners.forEach(listener => listener(event));
+    }
+
+    setScale(scale) {
+        this.selection.select('g.node-inner')
+            .transition()
+            .duration(SCALE_ANIMATION_DURATION)
+            .ease(easeBackOut.overshoot(1.7)) // höherer Wert = mehr "Bounce"
+            .attr('transform', `scale(${scale})`);
+    }
+
+    highlight() {
+        this.selection.select("rect").attr("fill", "#e6b800");
+        this.selection.select("ellipse").attr("fill", "#5fbbe9");
+        this.selection.select("polygon").attr("fill", "#b3e0b3");
+    }
+
+    removeHighlight() {
+        this.selection.select("rect").attr("fill", "#ffcc00");
+        this.selection.select("ellipse").attr("fill", "#66ccff");
+        this.selection.select("polygon").attr("fill", "#ccffcc");
     }
 
     enableEditing(event, div) {
