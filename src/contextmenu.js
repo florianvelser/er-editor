@@ -5,6 +5,7 @@ export class Contextmenu {
         this.element.addEventListener('blur', (event) => {
             this.hide();
         });
+        this.node = null;
     }
 
     setPosition(x, y) {
@@ -13,6 +14,8 @@ export class Contextmenu {
     }
 
     show(node) {
+        this.hide();
+        this.node = node;
         const isAttribute = node.type === 'attribute';
         const primaryBtn = document.getElementById('set-primary-key');
         const addBtn     = document.getElementById('add-attribute-button');
@@ -38,6 +41,10 @@ export class Contextmenu {
 
     hide() {
         this.element.style.display = 'none';
+        if(this.node) {
+            this.node.setScale(1);
+        }
+        this.node = null;
     }
 
     getContextNode() {

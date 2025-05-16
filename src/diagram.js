@@ -77,6 +77,7 @@ export class ERDiagram {
             .on('zoom', (event) => {
                 this.gMain.attr('transform', event.transform);
                 if (this.onZoom && typeof this.onZoom === 'function') {
+                    this.contextmenuhandler.hide();
                     this.onZoom(event.transform.k);
                     this.onViewChanged();
                 }
