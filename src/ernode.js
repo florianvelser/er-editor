@@ -1,3 +1,7 @@
+import { easeBackOut } from 'd3-ease';
+
+const SCALE_ANIMATION_DURATION = 200;
+
 /**
  * Custom class representing a node in the ER diagram.
  */
@@ -6,6 +10,7 @@ export class ERNode {
         Object.assign(this, config);
         // Array for registered Right Click Listeners
         this.rightClickListeners = [];
+        this.touchMoveListeners = [];
         // Array for registered Change Listeners
         this.changeListeners = [];
 
@@ -37,8 +42,16 @@ export class ERNode {
         this.rightClickListeners.push(listener);
     }
 
+    addTouchMoveListener(listener) {
+        this.touchMoveListeners.push(listener);
+    }
+
     removeRightClickListener(listener) {
         this.rightClickListeners = this.rightClickListeners.filter(l => l !== listener);
+    }
+
+    removeTouchMoveListener(listener) {
+        this.touchMoveListeners = this.touchMoveListeners.filter(l => l !== listener);
     }
 
     /**
@@ -165,7 +178,7 @@ export class ERNode {
             touchTimer_scale_animation = setTimeout(() => {
                 this.setScale(1.15);
                 touchTimer_scale_animation = null;
-            }, LONG_PRESS_DURATION-200);
+            }, LONG_PRESS_DURATION-SCALE_ANIMATION_DURATION);
         });
 
         div.on('touchend', event => {
@@ -191,7 +204,8 @@ export class ERNode {
             }
         });
 
-        div.on('touchmove touchcancel', () => {
+        div.on('touchmove touchcancel', (event) => {
+            this.touchMoveListeners.forEach(listener => listener(event));
             this.removeHighlight();
             if (touchTimer) {
                 clearTimeout(touchTimer);
@@ -219,7 +233,9 @@ export class ERNode {
 
     setScale(scale) {
         this.selection.select('g.node-inner')
-            .transition().duration(200)
+            .transition()
+            .duration(SCALE_ANIMATION_DURATION)
+            .ease(easeBackOut.overshoot(1.7)) // höherer Wert = mehr "Bounce"
             .attr('transform', `scale(${scale})`);
     }
 

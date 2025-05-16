@@ -496,6 +496,9 @@ export class ERDiagram {
             this.contextmenuhandler.setPosition(event.pageX, event.pageY);
             this.contextmenuhandler.show(node);
         });
+        node.addTouchMoveListener((event) => {
+            this.contextmenuhandler.hide();
+        });
         node.addChangeListener((before, after) => {
             this.historyManager.save(this.getStateSnapshot());
         });
@@ -574,29 +577,108 @@ export class ERDiagram {
 
     addAttributeNode() {
         this.historyManager.save(this.getStateSnapshot());
+
         const parent = this.contextmenuhandler.getContextNode();
-        if (parent.type != 'entity' && parent.type != 'relationship') return;
+        if (!['entity', 'relationship'].includes(parent.type)) return;
+
+        // ── Constants ───────────────────────────────────────────────
+        const ANGLE_STEP = 5 * (Math.PI / 180);     // 5°
+        const WINDOW_RADIUS = 6;                      // ±6 steps
+        const TOTAL_STEPS = Math.round(2 * Math.PI / ANGLE_STEP);
+        const MIN_CLEAR = 5;                      // extra clearance per node
+        const INF = Number.POSITIVE_INFINITY;
+        const CLIP = TOTAL_STEPS * 1e3;      // finite “infinite” for sums
+
+        // ── 1) Precompute unit‐vectors (ux, uy) ───────────────────
+        const ux = new Float64Array(TOTAL_STEPS);
+        const uy = new Float64Array(TOTAL_STEPS);
+        for (let i = 0; i < TOTAL_STEPS; i++) {
+            const θ = i * ANGLE_STEP;
+            ux[i] = Math.cos(θ);
+            uy[i] = Math.sin(θ);
+        }
+
+        // ── 2) Gather “others” with relative vectors & radii ───────
+        const others = this.nodes
+            .filter(n => n.id !== parent.id)
+            .map(n => {
+                let r;
+                switch (n.type) {
+                    case 'entity': r = Math.hypot(n.width / 2, 30); break;
+                    case 'attribute': r = Math.max(n.rx, 25); break;
+                    case 'relationship': r = Math.hypot(n.width / 2, n.height / 2); break;
+                    default: r = 50;
+                }
+                return {
+                    dx: n.x - parent.x,
+                    dy: n.y - parent.y,
+                    clearance: r + MIN_CLEAR
+                };
+            });
+
+        // ── 3) Compute freeDist[i] for each direction ───────────────
+        const freeDist = new Float64Array(TOTAL_STEPS);
+        for (let i = 0; i < TOTAL_STEPS; i++) {
+            let minBlock = INF;
+            const cx = ux[i], cy = uy[i];
+
+            for (const { dx, dy, clearance } of others) {
+                const proj = dx * cx + dy * cy;
+                if (proj <= 0) continue;                        // behind us
+
+                const perp = Math.abs(-cy * dx + cx * dy);
+                if (perp < clearance) {
+                    const entry = proj - clearance;
+                    if (entry < minBlock) minBlock = entry;
+                }
+            }
+            freeDist[i] = minBlock;
+        }
+
+        // ── 4) Find best “cone” via prefix‐sum sliding window ────────
+        // Clip infinities to a big finite value for numeric sums
+        const clipped = freeDist.map(d => d === INF ? CLIP : d);
+        const ps = new Float64Array(2 * TOTAL_STEPS + 1);
+        for (let i = 0; i < 2 * TOTAL_STEPS; i++) {
+            ps[i + 1] = ps[i] + clipped[i % TOTAL_STEPS];
+        }
+
+        let bestSum = -INF, bestCenter = 0;
+        const W = WINDOW_RADIUS;
+        for (let center = 0; center < TOTAL_STEPS; center++) {
+            const start = center - W + TOTAL_STEPS;
+            const end = center + W + TOTAL_STEPS;
+            const sum = ps[end + 1] - ps[start];
+            if (sum > bestSum) {
+                bestSum = sum;
+                bestCenter = center;
+            }
+        }
+
+        // ── 5) Build & place the new attribute ───────────────────────
+        const θbest = bestCenter * ANGLE_STEP;
+        const dirX = Math.cos(θbest);
+        const dirY = Math.sin(θbest);
 
         const newId = uuidv4();
+        const newAttr = new ERNode({ id: newId, type: 'attribute', text: 'Attribute' });
 
-        const newAttr = new ERNode({
-            id: newId,
-            type: 'attribute',
-            text: 'Attribute'
-        });
+        // initial tiny nudge
+        newAttr.x = parent.x + dirX * 1;
+        newAttr.y = parent.y + dirY * 1;
 
-        const OFFSET = 80;
-        newAttr.x = parent.x + OFFSET;
-        newAttr.y = parent.y;
+        // get true link‐length
+        const tempLink = { source: parent, target: newAttr };
+        const offset = this.calculateDistance(tempLink);
 
+        // final placement
+        newAttr.x = parent.x + dirX * offset;
+        newAttr.y = parent.y + dirY * offset;
+
+        // ── 6) Insert and update ─────────────────────────────────────
         this.nodes.push(newAttr);
         this.addContextMenuListener(newAttr);
-
-        this.links.push({
-            source: parent.id,
-            target: newId
-        });
-
+        this.links.push({ source: parent.id, target: newId });
         this.updateGraph();
         newAttr.enableEditing();
     }
