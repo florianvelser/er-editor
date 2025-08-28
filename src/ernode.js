@@ -152,7 +152,7 @@ export class ERNode {
             .style('outline', 'none')
             .style('box-sizing', 'border-box')
             .style('white-space', 'nowrap')
-            .html(this.text)
+            .text(this.text)
             .on('contextmenu', event => {
                 event.preventDefault();
                 this.contextmenu(event);
