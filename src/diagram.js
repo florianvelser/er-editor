@@ -32,7 +32,7 @@ export class ERDiagram {
 
     setName(name) {
         this.name = name;
-        document.getElementById("projectname").innerHTML = name + ".json";
+        document.getElementById("projectname").innerText = name + ".json";
     }
 
     getName() {
