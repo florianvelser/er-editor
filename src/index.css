@@ -19,6 +19,10 @@
                                   supported by Chrome, Edge, Opera and Firefox */
 }
 
+svg {
+    touch-action: none;
+}
+
 body {
     margin: 0;
     padding: 0;

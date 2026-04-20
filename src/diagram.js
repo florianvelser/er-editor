@@ -70,6 +70,11 @@ export class ERDiagram {
         this.zoom = d3.zoom()
             .scaleExtent([0.1, 10])
             .on("start", (event) => {
+                // Fix for mobile: touching the diagram should blur any active input/contenteditable
+                if (document.activeElement && document.activeElement !== document.body) {
+                    document.activeElement.blur();
+                }
+
                 if (event.sourceEvent && event.sourceEvent.type === "mousedown") {
                     this.svg.style("cursor", "grabbing");
                 }
@@ -407,6 +412,13 @@ export class ERDiagram {
         const nodeEnter = nodeSelection.enter().append('g')
             .attr('class', 'node')
             .call(d3.drag()
+                .filter(event => {
+                    if (event.ctrlKey || event.button) return false;
+                    const target = event.target;
+                    const el = target?.nodeType === 3 ? target.parentNode : target;
+                    if (el?.closest && el.closest('[contenteditable="true"]')) return false;
+                    return true;
+                })
                 .on('start', (event, d) => this.dragstarted(event, d))
                 .on('drag', (event, d) => this.dragged(event, d))
                 .on('end', (event, d) => this.dragended(event, d))
@@ -430,6 +442,10 @@ export class ERDiagram {
     }
 
     dragstarted(event, d) {
+        if (document.activeElement && document.activeElement !== document.body) {
+            document.activeElement.blur();
+        }
+
         if (!event.active) this.simulation.alphaTarget(0.3).restart();
         d.fx = d.x;
         d.fy = d.y;
