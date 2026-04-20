@@ -14,6 +14,7 @@ export class ERNode {
         // Array for registered Change Listeners
         this.changeListeners = [];
 
+        this.editEndListeners = [];
         // Set initial positions if not provided.
         if (typeof this.x !== 'number') {
             this.x = Math.random() * diagramWidth;
@@ -61,6 +62,10 @@ export class ERNode {
      */
     addChangeListener(listener) {
         this.changeListeners.push(listener);
+    }
+
+    addEditEndListener(listener) {
+        this.editEndListeners.push(listener);
     }
 
     /**
@@ -168,6 +173,8 @@ export class ERNode {
         let longPressTriggered = false;
 
         div.on('touchstart', event => {
+            // Prevent only single-touch gestures to allow multi-touch (e.g. pinch-to-zoom)
+            if (event.touches && event.touches.length > 1) return;
             event.preventDefault();
             this.highlight();
             longPressTriggered = false;
@@ -183,6 +190,8 @@ export class ERNode {
         });
 
         div.on('touchend', event => {
+            // Do not prevent default if it's part of a multi-touch
+            if (event.touches && event.touches.length > 0) return;
             event.preventDefault();
             this.removeHighlight();
             const now = Date.now();
@@ -291,6 +300,8 @@ export class ERNode {
         // Ensure the node is unfixed after editing, especially important on mobile devices
         this.fx = null;
         this.fy = null;
+
+        this.editEndListeners.forEach(listener => listener());
 
         const newText = div.text();
         if (newText === this._originalText) return;

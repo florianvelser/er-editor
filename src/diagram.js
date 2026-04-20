@@ -414,6 +414,8 @@ export class ERDiagram {
             .call(d3.drag()
                 .filter(event => {
                     if (event.ctrlKey || event.button) return false;
+                    // Don't intercept multi-touch gestures (e.g. pinch to zoom)
+                    if (event.type === 'touchstart' && event.touches && event.touches.length > 1) return false;
                     const target = event.target;
                     const el = target?.nodeType === 3 ? target.parentNode : target;
                     if (el?.closest && el.closest('[contenteditable="true"]')) return false;
@@ -514,6 +516,9 @@ export class ERDiagram {
         });
         node.addTouchMoveListener((event) => {
             this.contextmenuhandler.hide();
+        });
+        node.addEditEndListener(() => {
+            this.simulation.alphaTarget(0.3).restart();
         });
         node.addChangeListener((before, after) => {
             this.historyManager.save(this.getStateSnapshot());
