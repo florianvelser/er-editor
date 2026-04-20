@@ -152,6 +152,7 @@ export class ERNode {
             .style('outline', 'none')
             .style('box-sizing', 'border-box')
             .style('white-space', 'nowrap')
+            .attr('draggable', 'false')
             .text(this.text)
             .on('contextmenu', event => {
                 event.preventDefault();
@@ -286,6 +287,11 @@ export class ERNode {
         node.removeAttribute("contenteditable");
         const sel = window.getSelection();
         if (sel) sel.removeAllRanges();
+        
+        // Ensure the node is unfixed after editing, especially important on mobile devices
+        this.fx = null;
+        this.fy = null;
+
         const newText = div.text();
         if (newText === this._originalText) return;
         const before = this._originalText;
