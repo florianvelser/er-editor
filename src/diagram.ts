@@ -26,11 +26,11 @@ type LegacyWheelEvent = WheelEvent & { wheelDelta?: number };
  * By the time a link is read here, d3's forceLink has already resolved
  * string/number ids into node object references.
  */
-function asNode(endpoint: string | number | ERNode): ERNode {
+export function asNode(endpoint: string | number | ERNode): ERNode {
     return endpoint as ERNode;
 }
 
-function endpointId(endpoint: string | number | ERNode): string | number {
+export function endpointId(endpoint: string | number | ERNode): string | number {
     return typeof endpoint === "object" ? endpoint.id : endpoint;
 }
 
