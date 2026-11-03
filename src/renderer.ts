@@ -1,16 +1,31 @@
-import d3SvgToPng from 'd3-svg-to-png';
-import opentype from 'opentype.js';
-import interFontUrl from './fonts/Inter_28pt-Regular.ttf';
+import type * as d3 from "d3";
+import d3SvgToPng from "d3-svg-to-png";
+import opentype from "opentype.js";
+import interFontUrl from "./fonts/Inter_28pt-Regular.ttf";
+import type { DiagramBBox } from "./types";
+
+/**
+ * The subset of ERDiagram's public surface that the image renderer actually uses.
+ * Kept as a narrow structural interface to avoid a circular import with diagram.ts.
+ */
+export interface DiagramLike {
+    svg: d3.Selection<SVGSVGElement, unknown, any, any>;
+    getDiagramBBox(): DiagramBBox;
+}
 
 /**
  * Class for exporting an ERDiagram instance as an image.
  */
 export class ERDiagramImageRenderer {
+    private diagram: DiagramLike;
+    private projectName: string;
+    private interFontUrl: string;
+
     /**
-     * @param {ERDiagram} diagram - The diagram instance containing the D3 SVG elements.
-     * @param {string} projectName - The project name used in the image file.
+     * @param diagram - The diagram instance containing the D3 SVG elements.
+     * @param projectName - The project name used in the image file.
      */
-    constructor(diagram, projectName) {
+    constructor(diagram: DiagramLike, projectName: string) {
         this.diagram = diagram;
         this.projectName = projectName;
         this.interFontUrl = interFontUrl;
@@ -18,25 +33,22 @@ export class ERDiagramImageRenderer {
 
     /**
      * Exports the diagram as an image.
-     *
-     * @param {string} format - The image format (e.g., 'png').
-     * @param {number} quality - The quality parameter for the conversion.
      */
-    exportImage(format, quality, scale, transparent = false) {
+    exportImage(format: string, quality: number, scale: number, transparent = false): void {
         // Get the bounding box of the diagram content from the diagram instance.
         const bbox = this.diagram.getDiagramBBox();
 
         // Retrieve the original SVG element from the diagram.
-        const originalSvg = this.diagram.svg.node();
+        const originalSvg = this.diagram.svg.node()!;
         // Clone the entire SVG to leave the current view unchanged.
-        const clonedSvg = originalSvg.cloneNode(true);
+        const clonedSvg = originalSvg.cloneNode(true) as SVGSVGElement;
 
         // Adjust the cloned SVG to tightly fit the content.
-        clonedSvg.setAttribute('width', bbox.width);
-        clonedSvg.setAttribute('height', bbox.height);
+        clonedSvg.setAttribute("width", String(bbox.width));
+        clonedSvg.setAttribute("height", String(bbox.height));
 
         // Translate the main group to ensure content is properly positioned.
-        const gMain = clonedSvg.querySelector('.gMain');
+        const gMain = clonedSvg.querySelector<SVGGElement>(".gMain");
         if (gMain) {
             gMain.style.transform = `translate(${bbox.minX * -1}px, ${bbox.minY * -1}px)`;
         }
@@ -46,7 +58,7 @@ export class ERDiagramImageRenderer {
         const watermark = document.createElementNS(svgNS, "text");
         watermark.textContent = "Created with erditor";
         watermark.setAttribute("x", "5");
-        watermark.setAttribute("y", bbox.height - 5);
+        watermark.setAttribute("y", String(bbox.height - 5));
         watermark.setAttribute("dominant-baseline", "text-after-edge");
         watermark.style.fontSize = "10px";
         watermark.setAttribute("fill", "rgba(0,0,0,0.5)");
@@ -55,67 +67,66 @@ export class ERDiagramImageRenderer {
         clonedSvg.appendChild(watermark);
 
         // Temporarily assign an ID to the cloned SVG and add it to the document.
-        clonedSvg.setAttribute('id', 'clonedSvg');
+        clonedSvg.setAttribute("id", "clonedSvg");
         document.body.appendChild(clonedSvg);
 
         // Trigger conversion of the SVG to PNG.
-        d3SvgToPng('#clonedSvg', this.projectName, {
+        d3SvgToPng("#clonedSvg", this.projectName, {
             scale: scale,
             format: format,
             quality: quality,
             download: true,
-            ignore: '.ignored',
-            background: transparent ? 'transparent' : 'white',
+            ignore: ".ignored",
+            background: transparent ? "transparent" : "white",
         });
 
         // Remove the temporary cloned SVG from the document.
-        document.getElementById('clonedSvg').remove();
+        document.getElementById("clonedSvg")!.remove();
     }
 
-    async exportImageUrl(format = 'png', quality = 1.0, scale = 1) {
+    async exportImageUrl(format = "png", quality = 1.0, scale = 1): Promise<string> {
         // Get the bounding box of the diagram content from the diagram instance.
         const bbox = this.diagram.getDiagramBBox();
 
         // Retrieve the original SVG element from the diagram.
-        const originalSvg = this.diagram.svg.node();
+        const originalSvg = this.diagram.svg.node()!;
         // Clone the entire SVG to leave the current view unchanged.
-        const clonedSvg = originalSvg.cloneNode(true);
+        const clonedSvg = originalSvg.cloneNode(true) as SVGSVGElement;
 
         // Adjust the cloned SVG to tightly fit the content.
-        clonedSvg.setAttribute('width', bbox.width);
-        clonedSvg.setAttribute('height', bbox.height);
+        clonedSvg.setAttribute("width", String(bbox.width));
+        clonedSvg.setAttribute("height", String(bbox.height));
 
         // Translate the main group to ensure content is properly positioned.
-        const gMain = clonedSvg.querySelector('.gMain');
+        const gMain = clonedSvg.querySelector<SVGGElement>(".gMain");
         if (gMain) {
             gMain.style.transform = `translate(${bbox.minX * -1}px, ${bbox.minY * -1}px)`;
         }
 
         // Temporarily assign an ID to the cloned SVG and add it to the document.
-        clonedSvg.setAttribute('id', 'clonedSvg');
+        clonedSvg.setAttribute("id", "clonedSvg");
         document.body.appendChild(clonedSvg);
 
         // Trigger conversion of the SVG to PNG.
-        const url = await d3SvgToPng('#clonedSvg', this.projectName, {
+        const url = await d3SvgToPng("#clonedSvg", this.projectName, {
             scale: scale,
             format: format,
             quality: quality,
-            ignore: '.ignored',
             download: false,
-            background: 'transparent'
+            background: "transparent"
         });
 
-        document.getElementById('clonedSvg').remove();
+        document.getElementById("clonedSvg")!.remove();
 
         return url;
     }
 
 
-    async downloadStandaloneSVG(fileName) {
+    async downloadStandaloneSVG(fileName?: string): Promise<void> {
         const svgString = await this._prepareStandaloneSVGString();
-        const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
+        const link = document.createElement("a");
         link.href = url;
         link.download = fileName || `${this.projectName}.svg`;
         document.body.appendChild(link);
@@ -126,25 +137,25 @@ export class ERDiagramImageRenderer {
         }, 100);
     }
 
-    async _prepareStandaloneSVGString() {
+    private async _prepareStandaloneSVGString(): Promise<string> {
         // 1) Klonen & Größe/ViewBox setzen
         const bbox = this.diagram.getDiagramBBox();
-        const originalSvg = this.diagram.svg.node();
-        const clonedSvg = originalSvg.cloneNode(true);
-        clonedSvg.setAttribute('width', `${bbox.width}px`);
-        clonedSvg.setAttribute('height', `${bbox.height}px`);
-        clonedSvg.setAttribute('viewBox', `0 0 ${bbox.width} ${bbox.height}`);
+        const originalSvg = this.diagram.svg.node()!;
+        const clonedSvg = originalSvg.cloneNode(true) as SVGSVGElement;
+        clonedSvg.setAttribute("width", `${bbox.width}px`);
+        clonedSvg.setAttribute("height", `${bbox.height}px`);
+        clonedSvg.setAttribute("viewBox", `0 0 ${bbox.width} ${bbox.height}`);
 
         // 2) Inhalte verschieben (falls diagramm nicht bei 0/0 startet)
-        const gMain = clonedSvg.querySelector('.gMain');
+        const gMain = clonedSvg.querySelector<SVGGElement>(".gMain");
         if (gMain) {
-            gMain.setAttribute('transform', `translate(${-bbox.minX},${-bbox.minY})`);
+            gMain.setAttribute("transform", `translate(${-bbox.minX},${-bbox.minY})`);
         }
 
         // 3) Linien‐Styling
-        clonedSvg.querySelectorAll('line').forEach(line => {
-            line.setAttribute('stroke-linecap', 'round');
-            line.setAttribute('stroke', '#999');
+        clonedSvg.querySelectorAll("line").forEach(line => {
+            line.setAttribute("stroke-linecap", "round");
+            line.setAttribute("stroke", "#999");
         });
 
         // Create a watermark element.
@@ -152,7 +163,7 @@ export class ERDiagramImageRenderer {
         const watermark = document.createElementNS(svgNS, "text");
         watermark.textContent = "Created with erditor";
         watermark.setAttribute("x", "5");
-        watermark.setAttribute("y", bbox.height - 5);
+        watermark.setAttribute("y", String(bbox.height - 5));
         watermark.setAttribute("dominant-baseline", "text-after-edge");
         watermark.style.fontSize = "10px";
         watermark.setAttribute("fill", "rgba(0,0,0,0.5)");
@@ -183,22 +194,22 @@ export class ERDiagramImageRenderer {
         return '<?xml version="1.0" standalone="no"?>\n' + svgString;
     }
 
-    async _convertForeignObjects(svgEl) {
+    private async _convertForeignObjects(svgEl: SVGSVGElement): Promise<void> {
         const font = await opentype.load(this.interFontUrl);
-        const fobjs = Array.from(svgEl.querySelectorAll('foreignObject'));
+        const fobjs = Array.from(svgEl.querySelectorAll("foreignObject"));
 
         for (const fo of fobjs) {
-            const txt = fo.textContent?.trim() || '';
+            const txt = fo.textContent?.trim() || "";
             if (!txt) { fo.remove(); continue; }
 
-            const x = parseFloat(fo.getAttribute('x') || '0');
-            const y = parseFloat(fo.getAttribute('y') || '0');
-            const w = parseFloat(fo.getAttribute('width') || '0');
-            const h = parseFloat(fo.getAttribute('height') || '0');
+            const x = parseFloat(fo.getAttribute("x") || "0");
+            const y = parseFloat(fo.getAttribute("y") || "0");
+            const w = parseFloat(fo.getAttribute("width") || "0");
+            const h = parseFloat(fo.getAttribute("height") || "0");
 
-            const style = fo.querySelector('div')?.getAttribute('style') || '';
-            const fontSize = (style.match(/font-size:\s*(\d+)px/)?.[1] || 12) * 1;
-            const fill = style.match(/color:\s*(#[0-9A-Fa-f]{3,6})/)?.[1] || '#000';
+            const style = fo.querySelector("div")?.getAttribute("style") || "";
+            const fontSize = Number(style.match(/font-size:\s*(\d+)px/)?.[1] || 12) * 1;
+            const fill = style.match(/color:\s*(#[0-9A-Fa-f]{3,6})/)?.[1] || "#000";
             const underline = /text-decoration\s*:\s*underline/.test(style);
 
             // Vertikale Mitte + descent-Korrektur
@@ -216,23 +227,23 @@ export class ERDiagramImageRenderer {
             const finalPath = font.getPath(txt, startX, cy, fontSize, { kerning: true });
             const d = finalPath.toPathData(2);
 
-            const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            pathEl.setAttribute('d', d);
-            pathEl.setAttribute('fill', fill);
+            const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            pathEl.setAttribute("d", d);
+            pathEl.setAttribute("fill", fill);
 
             // 4) Optional: Unterstreichung als <line> hinzufügen
-            const groupEl = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            const groupEl = document.createElementNS("http://www.w3.org/2000/svg", "g");
             groupEl.appendChild(pathEl);
 
             if (underline) {
                 const underlineY = cy + fontSize * 0.15; // kleine Verschiebung unter Text
-                const lineEl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                lineEl.setAttribute('x1', startX);
-                lineEl.setAttribute('x2', startX + textWidth);
-                lineEl.setAttribute('y1', underlineY);
-                lineEl.setAttribute('y2', underlineY);
-                lineEl.setAttribute('stroke', fill);
-                lineEl.setAttribute('stroke-width', Math.max(1, fontSize * 0.07)); // dynamisch
+                const lineEl = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                lineEl.setAttribute("x1", String(startX));
+                lineEl.setAttribute("x2", String(startX + textWidth));
+                lineEl.setAttribute("y1", String(underlineY));
+                lineEl.setAttribute("y2", String(underlineY));
+                lineEl.setAttribute("stroke", fill);
+                lineEl.setAttribute("stroke-width", String(Math.max(1, fontSize * 0.07))); // dynamisch
                 groupEl.appendChild(lineEl);
             }
 
@@ -241,16 +252,16 @@ export class ERDiagramImageRenderer {
     }
 
 
-    async _convertTextToOutlines(svgEl) {
+    private async _convertTextToOutlines(svgEl: SVGSVGElement): Promise<void> {
         const font = await opentype.load(this.interFontUrl);
-        const texts = Array.from(svgEl.querySelectorAll('text'));
+        const texts = Array.from(svgEl.querySelectorAll("text"));
         for (const textEl of texts) {
-            const txt = textEl.textContent || '';
-            const rawX = parseFloat(textEl.getAttribute('x') || '0');
-            const rawY = parseFloat(textEl.getAttribute('y') || '0') + 3;
+            const txt = textEl.textContent || "";
+            const rawX = parseFloat(textEl.getAttribute("x") || "0");
+            const rawY = parseFloat(textEl.getAttribute("y") || "0") + 3;
             const style = window.getComputedStyle(textEl);
             const fontSize = parseFloat(style.fontSize) || 12;
-            const fill = textEl.getAttribute('fill') || style.fill || '#000';
+            const fill = textEl.getAttribute("fill") || style.fill || "#000";
 
             // 1) erst bei x=0 messen
             const temp = font.getPath(txt, 0, rawY, fontSize, { kerning: true });
@@ -259,7 +270,7 @@ export class ERDiagramImageRenderer {
 
             // 2) wenn text-anchor="middle": rawX ist die Ziel-Mitte
             // andernfalls: rawX ist linker Rand – Du kannst hier je nach Use-Case anpassen
-            const isMiddle = textEl.getAttribute('text-anchor') === 'middle';
+            const isMiddle = textEl.getAttribute("text-anchor") === "middle";
             const startX = isMiddle
                 ? rawX - tw / 2 - bb.x1
                 : rawX - bb.x1;
@@ -268,11 +279,11 @@ export class ERDiagramImageRenderer {
             const d = pathObj.toPathData(2);
 
             const pathEl = document.createElementNS(
-                'http://www.w3.org/2000/svg',
-                'path'
+                "http://www.w3.org/2000/svg",
+                "path"
             );
-            pathEl.setAttribute('d', d);
-            pathEl.setAttribute('fill', fill);
+            pathEl.setAttribute("d", d);
+            pathEl.setAttribute("fill", fill);
 
             textEl.parentNode?.replaceChild(pathEl, textEl);
         }

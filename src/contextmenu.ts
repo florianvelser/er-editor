@@ -1,30 +1,36 @@
+import type { ERNode } from "./ernode";
+
 export class Contextmenu {
+    private contextnode: ERNode | null;
+    private element: HTMLElement;
+    private node: ERNode | null;
+
     constructor() {
-        this.contextnode = null
-        this.element = document.getElementById('contextmenu');
-        this.element.addEventListener('blur', (event) => {
+        this.contextnode = null;
+        this.element = document.getElementById("contextmenu")!;
+        this.element.addEventListener("blur", () => {
             this.hide();
         });
         this.node = null;
     }
 
-    setPosition(x, y) {
-        this.element.style.left = x + 'px';
-        this.element.style.top = y + 'px';
+    setPosition(x: number, y: number): void {
+        this.element.style.left = x + "px";
+        this.element.style.top = y + "px";
     }
 
-    show(node) {
+    show(node: ERNode): void {
         this.hide();
         this.node = node;
-        const isAttribute = node.type === 'attribute';
-        const primaryBtn = document.getElementById('set-primary-key');
-        const addBtn = document.getElementById('add-attribute-button');
-        primaryBtn.style.display = isAttribute ? 'block' : 'none';
-        addBtn.style.display = isAttribute ? 'none' : 'block';
+        const isAttribute = node.type === "attribute";
+        const primaryBtn = document.getElementById("set-primary-key")!;
+        const addBtn = document.getElementById("add-attribute-button")!;
+        primaryBtn.style.display = isAttribute ? "block" : "none";
+        addBtn.style.display = isAttribute ? "none" : "block";
 
         this.contextnode = node;
         const menu = this.element;
-        menu.style.display = 'block';
+        menu.style.display = "block";
 
         const menuLeft = menu.offsetLeft;
         const menuTop = menu.offsetTop;
@@ -65,15 +71,15 @@ export class Contextmenu {
         menu.focus();
     }
 
-    hide() {
-        this.element.style.display = 'none';
+    hide(): void {
+        this.element.style.display = "none";
         if (this.node) {
             this.node.setScale(1);
         }
         this.node = null;
     }
 
-    getContextNode() {
-        return this.contextnode
+    getContextNode(): ERNode | null {
+        return this.contextnode;
     }
 }

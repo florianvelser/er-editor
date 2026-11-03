@@ -7,22 +7,22 @@ const er_diagram = new ERDiagram(
     document.documentElement.clientHeight
 )
 
-const zoomText = document.getElementById('zoom-text');
-const downloadDocumentButton = document.getElementById('download-json');
-const uploadDocumentButton = document.getElementById('upload-json-btn');
-const newDocumentButton = document.getElementById('diagram-new');
-const addEntityButton = document.getElementById('add-entity');
-const undoButton = document.getElementById('undo-btn');
-const redoButton = document.getElementById('redo-btn');
-const viewFitContentButton = document.getElementById('fit-content');
-const backToContentButton = document.getElementById('back-to-content');
-const exportButton = document.getElementById('export-png');
-const renameProjectButton = document.getElementById('projectname');
+const zoomText = document.getElementById('zoom-text')!;
+const downloadDocumentButton = document.getElementById('download-json')!;
+const uploadDocumentButton = document.getElementById('upload-json-btn')!;
+const newDocumentButton = document.getElementById('diagram-new')!;
+const addEntityButton = document.getElementById('add-entity')!;
+const undoButton = document.getElementById('undo-btn')!;
+const redoButton = document.getElementById('redo-btn')!;
+const viewFitContentButton = document.getElementById('fit-content')!;
+const backToContentButton = document.getElementById('back-to-content')!;
+const exportButton = document.getElementById('export-png')!;
+const renameProjectButton = document.getElementById('projectname')!;
 
-const decreaseZoomButton = document.getElementById('decrease-zoom');
-const increaseZoomButton = document.getElementById('increase-zoom');
+const decreaseZoomButton = document.getElementById('decrease-zoom')!;
+const increaseZoomButton = document.getElementById('increase-zoom')!;
 
-er_diagram.onZoom = function(zoom) {
+er_diagram.onZoom = function (zoom: number) {
     zoomText.innerText = Math.round(zoom * 100) + "%";
 }
 
