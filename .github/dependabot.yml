@@ -30,5 +30,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Higher than the default of 5: we reference more than 5 distinct
+    # actions across our workflows, and a tight cap previously queued
+    # actions/checkout and actions/setup-node behind other updates for a
+    # full cycle instead of surfacing all outdated actions at once.
+    open-pull-requests-limit: 15
     commit-message:
       prefix: "chore(ci)"
