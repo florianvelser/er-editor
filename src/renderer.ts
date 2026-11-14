@@ -5,6 +5,12 @@ import interFontUrl from "./fonts/Inter_28pt-Regular.ttf";
 import type { DiagramBBox } from "./types";
 
 /**
+ * Toggles the "Created with erditor" watermark added to exported images/SVGs.
+ * The watermarking code is intentionally kept in place but disabled by default.
+ */
+const WATERMARK_ENABLED = false;
+
+/**
  * The subset of ERDiagram's public surface that the image renderer actually uses.
  * Kept as a narrow structural interface to avoid a circular import with diagram.ts.
  */
@@ -53,18 +59,20 @@ export class ERDiagramImageRenderer {
             gMain.style.transform = `translate(${bbox.minX * -1}px, ${bbox.minY * -1}px)`;
         }
 
-        // Create a watermark element.
-        const svgNS = "http://www.w3.org/2000/svg";
-        const watermark = document.createElementNS(svgNS, "text");
-        watermark.textContent = "Created with erditor";
-        watermark.setAttribute("x", "5");
-        watermark.setAttribute("y", String(bbox.height - 5));
-        watermark.setAttribute("dominant-baseline", "text-after-edge");
-        watermark.style.fontSize = "10px";
-        watermark.setAttribute("fill", "rgba(0,0,0,0.5)");
+        if (WATERMARK_ENABLED) {
+            // Create a watermark element.
+            const svgNS = "http://www.w3.org/2000/svg";
+            const watermark = document.createElementNS(svgNS, "text");
+            watermark.textContent = "Created with erditor";
+            watermark.setAttribute("x", "5");
+            watermark.setAttribute("y", String(bbox.height - 5));
+            watermark.setAttribute("dominant-baseline", "text-after-edge");
+            watermark.style.fontSize = "10px";
+            watermark.setAttribute("fill", "rgba(0,0,0,0.5)");
 
-        // Append the watermark to the cloned SVG.
-        clonedSvg.appendChild(watermark);
+            // Append the watermark to the cloned SVG.
+            clonedSvg.appendChild(watermark);
+        }
 
         // Temporarily assign an ID to the cloned SVG and add it to the document.
         clonedSvg.setAttribute("id", "clonedSvg");
@@ -76,7 +84,9 @@ export class ERDiagramImageRenderer {
             format: format,
             quality: quality,
             download: true,
-            ignore: ".ignored",
+            // Link hit areas are invisible interaction affordances only; strip them
+            // so they can't leak into the exported image.
+            ignore: ".link-hitarea",
             background: transparent ? "transparent" : "white",
         });
 
@@ -113,6 +123,7 @@ export class ERDiagramImageRenderer {
             format: format,
             quality: quality,
             download: false,
+            ignore: ".link-hitarea",
             background: "transparent"
         });
 
@@ -152,32 +163,39 @@ export class ERDiagramImageRenderer {
             gMain.setAttribute("transform", `translate(${-bbox.minX},${-bbox.minY})`);
         }
 
-        // 3) Linien‐Styling
+        // 3) Link-Hit-Areas entfernen (unsichtbare Klickflächen, nicht Teil der Zeichnung).
+        // Must happen before the line styling below, since otherwise their wide
+        // (14px) stroke would get re-painted visible-grey like a real line.
+        clonedSvg.querySelectorAll(".link-hitarea").forEach(hitarea => hitarea.remove());
+
+        // 4) Linien‐Styling
         clonedSvg.querySelectorAll("line").forEach(line => {
             line.setAttribute("stroke-linecap", "round");
             line.setAttribute("stroke", "#999");
         });
 
-        // Create a watermark element.
-        const svgNS = "http://www.w3.org/2000/svg";
-        const watermark = document.createElementNS(svgNS, "text");
-        watermark.textContent = "Created with erditor";
-        watermark.setAttribute("x", "5");
-        watermark.setAttribute("y", String(bbox.height - 5));
-        watermark.setAttribute("dominant-baseline", "text-after-edge");
-        watermark.style.fontSize = "10px";
-        watermark.setAttribute("fill", "rgba(0,0,0,0.5)");
+        if (WATERMARK_ENABLED) {
+            // Create a watermark element.
+            const svgNS = "http://www.w3.org/2000/svg";
+            const watermark = document.createElementNS(svgNS, "text");
+            watermark.textContent = "Created with erditor";
+            watermark.setAttribute("x", "5");
+            watermark.setAttribute("y", String(bbox.height - 5));
+            watermark.setAttribute("dominant-baseline", "text-after-edge");
+            watermark.style.fontSize = "10px";
+            watermark.setAttribute("fill", "rgba(0,0,0,0.5)");
 
-        // Append the watermark to the cloned SVG.
-        clonedSvg.appendChild(watermark);
+            // Append the watermark to the cloned SVG.
+            clonedSvg.appendChild(watermark);
+        }
 
-        // 4) foreignObject entfernen & Text extrahieren
+        // 5) foreignObject entfernen & Text extrahieren
         await this._convertForeignObjects(clonedSvg);
 
-        // 5) alle <text> → Pfade
+        // 6) alle <text> → Pfade
         await this._convertTextToOutlines(clonedSvg);
 
-        // 6) Namespaces + XML‐Header
+        // 7) Namespaces + XML‐Header
         let svgString = new XMLSerializer().serializeToString(clonedSvg);
         if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
             svgString = svgString.replace(

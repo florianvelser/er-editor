@@ -30,6 +30,13 @@ export interface SerializedLink {
   source: string;
   target: string;
   cardinality?: string;
+  // True when every instance of the source entity must participate in this
+  // relationship; rendered as a double line (total participation constraint).
+  totalParticipation?: boolean;
+  // True for one of the two links of a self-referencing (recursive) relationship.
+  recursive?: boolean;
+  // Which side of the entity the recursive link's loop bulges towards.
+  recursiveSide?: 1 | -1;
 }
 
 export interface StateSnapshot {

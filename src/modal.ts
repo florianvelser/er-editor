@@ -193,6 +193,7 @@ export interface ExportModalResult {
     transparent: boolean;
     scale: number;
     format: string;
+    quality: number;
 }
 
 export class ExportModal {
@@ -201,6 +202,8 @@ export class ExportModal {
     private imageEl: HTMLImageElement;
     private transparentCheckbox: HTMLInputElement;
     private scaleControl: HTMLElement;
+    private qualityControl: HTMLInputElement;
+    private qualityValueEl: HTMLElement;
     private formatButtons: HTMLButtonElement[];
     private indicator: HTMLElement;
     private _promiseResolve: ((result: ExportModalResult | null) => void) | null = null;
@@ -212,6 +215,8 @@ export class ExportModal {
         this.imageEl = this.modal.querySelector(".export-image")!;
         this.transparentCheckbox = this.modal.querySelector("#opt-transparent")!;
         this.scaleControl = this.modal.querySelector("#opt-scale")!;
+        this.qualityControl = this.modal.querySelector("#opt-quality")!;
+        this.qualityValueEl = this.modal.querySelector("#opt-quality-value")!;
         this.formatButtons = Array.from(this.modal.querySelectorAll<HTMLButtonElement>(".export-actions .btn"));
         this.indicator = this.scaleControl.querySelector(".indicator")!;
         this._promiseResolve = null;
@@ -237,6 +242,11 @@ export class ExportModal {
         });
 
         this.transparentCheckbox.addEventListener("change", () => this._updateCheckered());
+        this.qualityControl.addEventListener("input", () => this._updateQualityLabel());
+    }
+
+    private _updateQualityLabel(): void {
+        this.qualityValueEl.textContent = `${this.qualityControl.value}%`;
     }
 
     private _resetScaleToDefault(): void {
@@ -281,7 +291,8 @@ export class ExportModal {
         return {
             transparent: this.transparentCheckbox.checked,
             scale: this.scale,
-            format
+            format,
+            quality: Number(this.qualityControl.value) / 100
         };
     }
 
@@ -293,6 +304,8 @@ export class ExportModal {
         this.modal.style.display = "block";
         this.transparentCheckbox.checked = false;
         this.imageEl.classList.remove("checkered");
+        this.qualityControl.value = "92";
+        this._updateQualityLabel();
 
         // Immediately position indicator without transition
         const active = this.scaleControl.querySelector<HTMLElement>(".segment.active");

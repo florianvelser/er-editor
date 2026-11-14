@@ -18,6 +18,13 @@ export interface ERLink extends d3.SimulationLinkDatum<ERNode> {
     // which checks for these before falling back to computeAnchor().
     sourceAnchor?: Anchor;
     targetAnchor?: Anchor;
+    // True when every instance of the source entity must participate in this
+    // relationship; rendered as a double line (total participation constraint).
+    totalParticipation?: boolean;
+    // True for one of the two links of a self-referencing (recursive) relationship.
+    recursive?: boolean;
+    // Which side of the entity the recursive link's loop bulges towards.
+    recursiveSide?: 1 | -1;
 }
 
 type LegacyWheelEvent = WheelEvent & { wheelDelta?: number };
@@ -51,6 +58,13 @@ export class ERDiagram implements DiagramLike {
     zoom!: d3.ZoomBehavior<SVGSVGElement, unknown>;
     simulation!: d3.Simulation<ERNode, ERLink>;
     currentlyDraggedNode?: ERNode | null;
+
+    // Sideways offset (px) between the two parallel strokes of a "double line"
+    // used to mark a total participation constraint.
+    private static readonly RAIL_GAP = 3;
+    // How far a recursive (self-referencing) relationship's loop bulges away
+    // from the straight line between the entity and the relationship node.
+    private static readonly RECURSIVE_BULGE = 46;
 
     constructor(element: string, width: number, height: number) {
         this.width = width;
@@ -265,7 +279,10 @@ export class ERDiagram implements DiagramLike {
             "links": this.links.map(item => ({
                 source: endpointId(item.source) as string,
                 target: endpointId(item.target) as string,
-                cardinality: item.cardinality
+                cardinality: item.cardinality,
+                totalParticipation: item.totalParticipation,
+                recursive: item.recursive,
+                recursiveSide: item.recursiveSide
             }))
         };
     }
@@ -307,43 +324,149 @@ export class ERDiagram implements DiagramLike {
         this.updateNodes();
     }
 
-    updateLinks(): void {
-        // Separate links with cardinality from the rest.
-        const nonCardinalityLinks = this.links.filter(l => !l.cardinality);
-        const cardinalityLinks = this.links.filter(l => l.cardinality);
+    /**
+     * Unique data-join key for a link. Recursive relationships push two links
+     * that share the same source/target pair (both roles attach to the same
+     * entity), so the recursive side is folded into the key to keep them distinct.
+     */
+    linkKey(d: ERLink): string {
+        const base = `${endpointId(d.source)}-${endpointId(d.target)}`;
+        return d.recursive ? `${base}-${d.recursiveSide}` : base;
+    }
 
-        // --- Non-cardinality links: use a single line element ---
-        const nonCardLinkSelection = this.gLinks.selectAll<SVGLineElement, ERLink>('.link.non-cardinality')
-            .data(nonCardinalityLinks, d => `${endpointId(d.source)}-${endpointId(d.target)}`);
-        nonCardLinkSelection.exit().remove();
-        nonCardLinkSelection.enter().append('line')
-            .attr('class', 'link non-cardinality')
-            .attr('stroke', 'black')
+    /**
+     * Ensures a link "segment" group contains the right DOM shape: one or two
+     * parallel visible strokes (single line, or a double line for a total
+     * participation constraint), plus an invisible wide stroke used as a
+     * generous click target for toggling that constraint.
+     */
+    private ensureLinkVisual(group: d3.Selection<any, any, any, any>, doubled: boolean, tag: "line" | "path"): void {
+        // Presentation attributes are set explicitly (not just via CSS classes)
+        // because both the raster and the standalone-SVG export serialize the
+        // cloned markup without the page's stylesheet, so anything relying
+        // purely on an external CSS rule would render invisible/wrong there.
+        let hitarea = group.select<SVGGraphicsElement>(`${tag}.link-hitarea`);
+        if (hitarea.empty()) {
+            // Geometry-only click target: unpainted (stroke "none"), but still
+            // hit-testable via pointer-events:stroke, which uses stroke-width
+            // for its hit region regardless of paint.
+            hitarea = group.append(tag as any)
+                .attr('class', 'link-hitarea')
+                .attr('fill', 'none')
+                .attr('stroke', 'none')
+                .attr('stroke-width', 14)
+                .style('pointer-events', 'stroke')
+                .style('cursor', 'pointer');
+        }
+
+        // One rail for a single line, two (offset left/right) for a double line.
+        const offsets = doubled ? [-1, 1] : [0];
+        const rails = group.selectAll<SVGGraphicsElement, number>(`${tag}.link-rail`)
+            .data(offsets);
+        rails.exit().remove();
+        rails.enter().append(tag as any)
+            .attr('class', 'link link-rail')
+            .attr('fill', 'none')
+            .attr('stroke', '#999')
             .attr('stroke-width', 2)
-            .merge(nonCardLinkSelection);
+            .attr('stroke-linecap', 'round');
 
-        // --- Cardinality links: use a group with two line segments ---
+        // Keep the (unpainted) click target on top so it always catches the pointer.
+        hitarea.raise();
+    }
+
+    updateLinks(): void {
+        // Recursive links (self-referencing relationships) need a curved shape so
+        // both roles stay visible; everything else keeps the existing straight lines.
+        const recursiveLinks = this.links.filter(l => l.recursive);
+        const nonCardinalityLinks = this.links.filter(l => !l.cardinality && !l.recursive);
+        const cardinalityLinks = this.links.filter(l => l.cardinality && !l.recursive);
+
+        const self = this;
+        const toggleOnClick = function (event: Event, d: ERLink): void {
+            event.stopPropagation();
+            self.toggleTotalParticipation(d);
+        };
+
+        // --- Non-cardinality links (e.g. entity/relationship -> attribute) ---
+        const nonCardLinkSelection = this.gLinks.selectAll<SVGGElement, ERLink>('.link-group.non-cardinality')
+            .data(nonCardinalityLinks, d => this.linkKey(d));
+        nonCardLinkSelection.exit().remove();
+        const nonCardLinkGroups = nonCardLinkSelection.enter().append('g')
+            .attr('class', 'link-group non-cardinality')
+            .merge(nonCardLinkSelection);
+        nonCardLinkGroups.each(function (d) {
+            self.ensureLinkVisual(d3.select(this), !!d.totalParticipation, 'line');
+        });
+        nonCardLinkGroups.on('click', toggleOnClick);
+
+        // --- Cardinality links: a group with two line segments (gap for the label) ---
         const cardLinkSelection = this.gLinks.selectAll<SVGGElement, ERLink>('.link-cardinality')
-            .data(cardinalityLinks, d => `${endpointId(d.source)}-${endpointId(d.target)}`);
+            .data(cardinalityLinks, d => this.linkKey(d));
         cardLinkSelection.exit().remove();
         const cardLinkEnter = cardLinkSelection.enter().append('g')
             .attr('class', 'link-cardinality');
-        // Append two line segments if they don't exist.
-        cardLinkEnter.append('line')
-            .attr('class', 'link left')
-            .attr('stroke', 'black')
-            .attr('stroke-width', 2);
-        cardLinkEnter.append('line')
-            .attr('class', 'link right')
-            .attr('stroke', 'black')
-            .attr('stroke-width', 2);
-        cardLinkSelection.merge(cardLinkEnter);
+        cardLinkEnter.append('g').attr('class', 'segment left');
+        cardLinkEnter.append('g').attr('class', 'segment right');
+        const cardLinkGroups = cardLinkEnter.merge(cardLinkSelection);
+        cardLinkGroups.each(function (d) {
+            const group = d3.select<SVGGElement, ERLink>(this);
+            self.ensureLinkVisual(group.select('g.segment.left'), !!d.totalParticipation, 'line');
+            self.ensureLinkVisual(group.select('g.segment.right'), !!d.totalParticipation, 'line');
+        });
+        cardLinkGroups.on('click', toggleOnClick);
+
+        // --- Recursive links: a curved path looping back to the same entity ---
+        const recursiveLinkSelection = this.gLinks.selectAll<SVGGElement, ERLink>('.link-recursive')
+            .data(recursiveLinks, d => this.linkKey(d));
+        recursiveLinkSelection.exit().remove();
+        const recursiveLinkGroups = recursiveLinkSelection.enter().append('g')
+            .attr('class', 'link-recursive')
+            .merge(recursiveLinkSelection);
+        recursiveLinkGroups.each(function (d) {
+            self.ensureLinkVisual(d3.select(this), !!d.totalParticipation, 'path');
+        });
+        recursiveLinkGroups.on('click', toggleOnClick);
+    }
+
+    /**
+     * Toggles the total participation constraint (rendered as a double line)
+     * for the given link and repositions the diagram immediately.
+     */
+    toggleTotalParticipation(link: ERLink): void {
+        this.historyManager.save(this.getStateSnapshot());
+        link.totalParticipation = !link.totalParticipation;
+        this.updateLinks();
+        this.ticked();
+    }
+
+    /**
+     * Where the cardinality label of a link should sit. For straight links this
+     * is simply the midpoint between the two anchors; for recursive (looping)
+     * links it follows the curve out to its bulge so it doesn't sit on the line.
+     */
+    computeLinkLabelPosition(d: ERLink): Anchor {
+        if (d.sourceAnchor && d.targetAnchor) {
+            return {
+                x: (d.sourceAnchor.x + d.targetAnchor.x) / 2,
+                y: (d.sourceAnchor.y + d.targetAnchor.y) / 2
+            };
+        }
+        const anchorSource = this.computeAnchor(asNode(d.source), asNode(d.target), 7);
+        const anchorTarget = this.computeAnchor(asNode(d.target), asNode(d.source), 7);
+        if (d.recursive) {
+            return this.computeRecursiveLabelPosition(anchorSource, anchorTarget, d.recursiveSide ?? 1);
+        }
+        return {
+            x: (anchorSource.x + anchorTarget.x) / 2,
+            y: (anchorSource.y + anchorTarget.y) / 2
+        };
     }
 
     updateLinkLabels(): void {
         const linkLabelData = this.links.filter(l => l.cardinality);
         const linkTextSelection = this.gLinks.selectAll<SVGTextElement, ERLink>('.linkText')
-            .data(linkLabelData, d => `${endpointId(d.source)}-${endpointId(d.target)}`);
+            .data(linkLabelData, d => this.linkKey(d));
 
         linkTextSelection.exit().remove();
 
@@ -352,30 +475,15 @@ export class ERDiagram implements DiagramLike {
             .attr('class', 'linkText')
             .attr('text-anchor', 'middle');
 
+        const self = this;
         const linkText = linkTextEnter.merge(linkTextSelection)
             .text(d => d.cardinality ?? '')
             .style('transform', 'translate(0px,3px)')
-            .attr('x', d => {
-                if (d.sourceAnchor && d.targetAnchor) {
-                    return (d.sourceAnchor.x + d.targetAnchor.x) / 2;
-                }
-                const anchorSource = this.computeAnchor(asNode(d.source), asNode(d.target), 7);
-                const anchorTarget = this.computeAnchor(asNode(d.target), asNode(d.source), 7);
-                return (anchorSource.x + anchorTarget.x) / 2;
-            })
-            .attr('y', d => {
-                if (d.sourceAnchor && d.targetAnchor) {
-                    return (d.sourceAnchor.y + d.targetAnchor.y) / 2;
-                }
-                const anchorSource = this.computeAnchor(asNode(d.source), asNode(d.target), 7);
-                const anchorTarget = this.computeAnchor(asNode(d.target), asNode(d.source), 7);
-                return (anchorSource.y + anchorTarget.y) / 2;
-            });
+            .attr('x', d => self.computeLinkLabelPosition(d).x)
+            .attr('y', d => self.computeLinkLabelPosition(d).y);
 
         // Possible cardinalites
         const cardinalities = ['1', 'n', 'm'];
-
-        const self = this;
 
         linkText.on('wheel', function (event, d) {
             event.stopPropagation();
@@ -634,12 +742,14 @@ export class ERDiagram implements DiagramLike {
     }
 
 
-    addAttributeNode(): void {
-        this.historyManager.save(this.getStateSnapshot());
-
-        const parent = this.contextmenuhandler.getContextNode();
-        if (!parent || !['entity', 'relationship'].includes(parent.type)) return;
-
+    /**
+     * Finds a direction (unit vector) from `origin` that points into the most
+     * open space among the other nodes, by scanning candidate directions on a
+     * circle and picking the widest clear "cone". Used to place a new node
+     * (attribute or recursive relationship) without immediately overlapping
+     * its siblings.
+     */
+    findFreeDirectionFrom(origin: ERNode): { dirX: number; dirY: number } {
         // ── Constants ───────────────────────────────────────────────
         const ANGLE_STEP = 5 * (Math.PI / 180);     // 5°
         const WINDOW_RADIUS = 6;                      // ±6 steps
@@ -659,7 +769,7 @@ export class ERDiagram implements DiagramLike {
 
         // ── 2) Gather “others” with relative vectors & radii ───────
         const others = this.nodes
-            .filter(n => n.id !== parent.id)
+            .filter(n => n.id !== origin.id)
             .map(n => {
                 let r: number;
                 switch (n.type) {
@@ -669,8 +779,8 @@ export class ERDiagram implements DiagramLike {
                     default: r = 50;
                 }
                 return {
-                    dx: (n.x as number) - (parent.x as number),
-                    dy: (n.y as number) - (parent.y as number),
+                    dx: (n.x as number) - (origin.x as number),
+                    dy: (n.y as number) - (origin.y as number),
                     clearance: r + MIN_CLEAR
                 };
             });
@@ -714,10 +824,17 @@ export class ERDiagram implements DiagramLike {
             }
         }
 
-        // ── 5) Build & place the new attribute ───────────────────────
         const θbest = bestCenter * ANGLE_STEP;
-        const dirX = Math.cos(θbest);
-        const dirY = Math.sin(θbest);
+        return { dirX: Math.cos(θbest), dirY: Math.sin(θbest) };
+    }
+
+    addAttributeNode(): void {
+        this.historyManager.save(this.getStateSnapshot());
+
+        const parent = this.contextmenuhandler.getContextNode();
+        if (!parent || !['entity', 'relationship'].includes(parent.type)) return;
+
+        const { dirX, dirY } = this.findFreeDirectionFrom(parent);
 
         const newId = uuidv4();
         const newAttr = new ERNode({ id: newId, type: 'attribute', text: 'Attribute' });
@@ -734,12 +851,43 @@ export class ERDiagram implements DiagramLike {
         newAttr.x = (parent.x as number) + dirX * offset;
         newAttr.y = (parent.y as number) + dirY * offset;
 
-        // ── 6) Insert and update ─────────────────────────────────────
+        // ── Insert and update ─────────────────────────────────────
         this.nodes.push(newAttr);
         this.addContextMenuListener(newAttr);
         this.links.push({ source: parent.id, target: newId });
         this.updateGraph();
         newAttr.enableEditing();
+    }
+
+    /**
+     * Adds a recursive (self-referencing) relationship: a relationship node
+     * connected to the same entity twice, once per role (e.g. "manages" /
+     * "is managed by"). The two links are rendered as curved loops bulging to
+     * opposite sides so both stay visible even though they share both endpoints.
+     */
+    createRecursiveRelation(): void {
+        const entity = this.contextmenuhandler.getContextNode();
+        if (!entity || entity.type !== 'entity') return;
+
+        this.historyManager.save(this.getStateSnapshot());
+
+        const { dirX, dirY } = this.findFreeDirectionFrom(entity);
+        const placementDistance = 140;
+
+        const relationNode = new ERNode({
+            id: uuidv4(),
+            type: 'relationship',
+            text: 'Relation'
+        });
+        this.addContextMenuListener(relationNode);
+        relationNode.x = (entity.x as number) + dirX * placementDistance;
+        relationNode.y = (entity.y as number) + dirY * placementDistance;
+
+        this.nodes.push(relationNode);
+        this.links.push({ source: entity, target: relationNode, cardinality: '1', recursive: true, recursiveSide: 1 });
+        this.links.push({ source: entity, target: relationNode, cardinality: 'n', recursive: true, recursiveSide: -1 });
+
+        this.updateGraph();
     }
 
     undo(): void {
@@ -845,6 +993,11 @@ export class ERDiagram implements DiagramLike {
         document.getElementById("add-attribute-button")!.addEventListener('click', () => {
             this.contextmenuhandler.hide();
             this.addAttributeNode();
+        });
+
+        document.getElementById("add-recursive-relation-button")!.addEventListener('click', () => {
+            this.contextmenuhandler.hide();
+            this.createRecursiveRelation();
         });
 
         document.getElementById("delete-button")!.addEventListener('click', () => {
@@ -981,6 +1134,93 @@ export class ERDiagram implements DiagramLike {
         };
     }
 
+    /**
+     * Positions the (1 or 2) straight "rail" line(s) and the hit-area line of a
+     * link segment between two points, offsetting doubled rails sideways.
+     */
+    positionLinkSegment(group: d3.Selection<any, any, any, any>, p1: Anchor, p2: Anchor): void {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len;
+        const ny = dx / len;
+
+        group.selectAll<SVGLineElement, number>('line.link-rail')
+            .attr('x1', off => p1.x + nx * off * ERDiagram.RAIL_GAP)
+            .attr('y1', off => p1.y + ny * off * ERDiagram.RAIL_GAP)
+            .attr('x2', off => p2.x + nx * off * ERDiagram.RAIL_GAP)
+            .attr('y2', off => p2.y + ny * off * ERDiagram.RAIL_GAP);
+
+        group.select<SVGLineElement>('line.link-hitarea')
+            .attr('x1', p1.x).attr('y1', p1.y)
+            .attr('x2', p2.x).attr('y2', p2.y);
+    }
+
+    /**
+     * Places a recursive link's cardinality label just outside the apex of its
+     * loop (the quadratic-bezier midpoint, pushed further out along the same
+     * perpendicular), so the label doesn't sit directly on the stroked curve
+     * and block clicks meant for toggling total participation.
+     */
+    private computeRecursiveLabelPosition(p1: Anchor, p2: Anchor, side: 1 | -1): Anchor {
+        const control = this.recursiveControlPoint(p1, p2, side, 0);
+        const apex = {
+            x: 0.25 * p1.x + 0.5 * control.x + 0.25 * p2.x,
+            y: 0.25 * p1.y + 0.5 * control.y + 0.25 * p2.y
+        };
+
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len;
+        const ny = dx / len;
+        const LABEL_CLEARANCE = 12;
+
+        return {
+            x: apex.x + nx * side * LABEL_CLEARANCE,
+            y: apex.y + ny * side * LABEL_CLEARANCE
+        };
+    }
+
+    private recursiveControlPoint(p1: Anchor, p2: Anchor, side: 1 | -1, railOffset: number): Anchor {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len;
+        const ny = dx / len;
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2;
+        return {
+            x: midX + nx * (side * ERDiagram.RECURSIVE_BULGE + railOffset),
+            y: midY + ny * (side * ERDiagram.RECURSIVE_BULGE + railOffset)
+        };
+    }
+
+    /**
+     * Positions the (1 or 2) curved "rail" path(s) and the hit-area path of a
+     * recursive link, looping from and back to the same entity.
+     */
+    positionRecursiveSegment(group: d3.Selection<any, any, any, any>, p1: Anchor, p2: Anchor, side: 1 | -1): void {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len;
+        const ny = dx / len;
+
+        const pathFor = (railOffset: number): string => {
+            const sx = p1.x + nx * railOffset, sy = p1.y + ny * railOffset;
+            const ex = p2.x + nx * railOffset, ey = p2.y + ny * railOffset;
+            const control = this.recursiveControlPoint(p1, p2, side, railOffset);
+            return `M ${sx} ${sy} Q ${control.x} ${control.y} ${ex} ${ey}`;
+        };
+
+        group.selectAll<SVGPathElement, number>('path.link-rail')
+            .attr('d', off => pathFor(off * ERDiagram.RAIL_GAP));
+
+        group.select<SVGPathElement>('path.link-hitarea')
+            .attr('d', pathFor(0));
+    }
+
     updateDistances(): void {
         this.simulation.force<d3.ForceLink<ERNode, ERLink>>("link")!.distance(link => this.calculateDistance(link));
     }
@@ -1002,14 +1242,15 @@ export class ERDiagram implements DiagramLike {
         if (this.currentlyDraggedNode) {
             this.updateNodeSelection(this.currentlyDraggedNode);
         }
-        // Update non-cardinality links (single line)
-        this.gLinks.selectAll<SVGLineElement, ERLink>('.link.non-cardinality')
-            .attr('x1', d => this.computeAnchor(asNode(d.source), asNode(d.target), 7).x)
-            .attr('y1', d => this.computeAnchor(asNode(d.source), asNode(d.target), 7).y)
-            .attr('x2', d => this.computeAnchor(asNode(d.target), asNode(d.source), 7).x)
-            .attr('y2', d => this.computeAnchor(asNode(d.target), asNode(d.source), 7).y);
+        // Update non-cardinality links (e.g. entity/relationship -> attribute)
+        this.gLinks.selectAll<SVGGElement, ERLink>('.link-group.non-cardinality').each((d, i, nodes) => {
+            const group = d3.select<SVGGElement, ERLink>(nodes[i]);
+            const sourceAnchor = this.computeAnchor(asNode(d.source), asNode(d.target), 7);
+            const targetAnchor = this.computeAnchor(asNode(d.target), asNode(d.source), 7);
+            this.positionLinkSegment(group, sourceAnchor, targetAnchor);
+        });
 
-        // Update cardinality links (two segments with a gap)
+        // Update cardinality links (two segments with a gap for the label)
         this.gLinks.selectAll<SVGGElement, ERLink>('.link-cardinality').each((d, i, nodes) => {
             const group = d3.select<SVGGElement, ERLink>(nodes[i]);
             const sourceAnchor = this.computeAnchor(asNode(d.source), asNode(d.target), 7);
@@ -1018,7 +1259,7 @@ export class ERDiagram implements DiagramLike {
             const midY = (sourceAnchor.y + targetAnchor.y) / 2;
             const dx = targetAnchor.x - sourceAnchor.x;
             const dy = targetAnchor.y - sourceAnchor.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
             const ux = dx / dist;
             const uy = dy / dist;
             const offset = 20; // fixed offset in pixels
@@ -1027,33 +1268,22 @@ export class ERDiagram implements DiagramLike {
             const rightX = midX + ux * (offset / 2);
             const rightY = midY + uy * (offset / 2);
 
-            // Update first segment: from source to left gap
-            group.select<SVGLineElement>('line.left')
-                .attr('x1', sourceAnchor.x)
-                .attr('y1', sourceAnchor.y)
-                .attr('x2', leftX)
-                .attr('y2', leftY);
-
-            // Update second segment: from right gap to target
-            group.select<SVGLineElement>('line.right')
-                .attr('x1', rightX)
-                .attr('y1', rightY)
-                .attr('x2', targetAnchor.x)
-                .attr('y2', targetAnchor.y);
+            this.positionLinkSegment(group.select('g.segment.left'), sourceAnchor, { x: leftX, y: leftY });
+            this.positionLinkSegment(group.select('g.segment.right'), { x: rightX, y: rightY }, targetAnchor);
         });
 
-        // Update link labels (the cardinality text remains centered between anchors)
+        // Update recursive links: two curved loops back to the same entity
+        this.gLinks.selectAll<SVGGElement, ERLink>('.link-recursive').each((d, i, nodes) => {
+            const group = d3.select<SVGGElement, ERLink>(nodes[i]);
+            const sourceAnchor = this.computeAnchor(asNode(d.source), asNode(d.target), 7);
+            const targetAnchor = this.computeAnchor(asNode(d.target), asNode(d.source), 7);
+            this.positionRecursiveSegment(group, sourceAnchor, targetAnchor, d.recursiveSide ?? 1);
+        });
+
+        // Update link labels (the cardinality text remains centered on its link)
         this.gLinks.selectAll<SVGTextElement, ERLink>('.linkText')
-            .attr('x', d => {
-                const anchorSource = this.computeAnchor(asNode(d.source), asNode(d.target), 7);
-                const anchorTarget = this.computeAnchor(asNode(d.target), asNode(d.source), 7);
-                return (anchorSource.x + anchorTarget.x) / 2;
-            })
-            .attr('y', d => {
-                const anchorSource = this.computeAnchor(asNode(d.source), asNode(d.target), 7);
-                const anchorTarget = this.computeAnchor(asNode(d.target), asNode(d.source), 7);
-                return (anchorSource.y + anchorTarget.y) / 2;
-            });
+            .attr('x', d => this.computeLinkLabelPosition(d).x)
+            .attr('y', d => this.computeLinkLabelPosition(d).y);
 
         // Update node positions
         this.gNodes.selectAll<SVGGElement, ERNode>('.node')
