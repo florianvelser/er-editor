@@ -171,6 +171,78 @@ describe("ERDiagram context-menu driven operations", () => {
         expect(newAttr.type).toBe("attribute");
         expect(diagram.links.some(l => endpointId(l.source) === entityId && endpointId(l.target) === newAttr.id)).toBe(true);
     });
+
+    it("createRecursiveRelation adds a relationship node linked twice to the same entity", () => {
+        const diagram = createDiagram();
+        const entityId = "bad9ff34-73d2-4670-aa1e-70b59e2e9170";
+        const entityNode = diagram.nodes.find(n => n.id === entityId)!;
+        const countBefore = diagram.nodes.length;
+        const linksBefore = diagram.links.length;
+
+        diagram.contextmenuhandler.show(entityNode);
+        diagram.createRecursiveRelation();
+
+        expect(diagram.nodes).toHaveLength(countBefore + 1);
+        const relationNode = diagram.nodes.at(-1)!;
+        expect(relationNode.type).toBe("relationship");
+
+        expect(diagram.links).toHaveLength(linksBefore + 2);
+        const recursiveLinks = diagram.links.filter(l =>
+            endpointId(l.source) === entityId && endpointId(l.target) === relationNode.id
+        );
+        expect(recursiveLinks).toHaveLength(2);
+        expect(recursiveLinks.every(l => l.recursive)).toBe(true);
+        expect(new Set(recursiveLinks.map(l => l.recursiveSide))).toEqual(new Set([1, -1]));
+    });
+
+    it("createRecursiveRelation on a non-entity context node does nothing", () => {
+        const diagram = createDiagram();
+        const attrId = "a361fa2e-b497-4e7b-90bc-ba0d4689a0cc";
+        const attrNode = diagram.nodes.find(n => n.id === attrId)!;
+        const countBefore = diagram.nodes.length;
+        const linksBefore = diagram.links.length;
+
+        diagram.contextmenuhandler.show(attrNode);
+        diagram.createRecursiveRelation();
+
+        expect(diagram.nodes).toHaveLength(countBefore);
+        expect(diagram.links).toHaveLength(linksBefore);
+    });
+
+    it("toggleTotalParticipation flips the flag and is undoable", () => {
+        const diagram = createDiagram();
+        const link = diagram.links[0];
+        expect(link.totalParticipation).toBeFalsy();
+
+        diagram.toggleTotalParticipation(link);
+        expect(link.totalParticipation).toBe(true);
+
+        diagram.toggleTotalParticipation(link);
+        expect(link.totalParticipation).toBe(false);
+
+        diagram.undo();
+        expect(diagram.links[0].totalParticipation).toBe(true);
+    });
+
+    it("getStateSnapshot round-trips recursive and total participation link flags", () => {
+        const diagram = createDiagram();
+        const entityId = "bad9ff34-73d2-4670-aa1e-70b59e2e9170";
+        const entityNode = diagram.nodes.find(n => n.id === entityId)!;
+
+        diagram.contextmenuhandler.show(entityNode);
+        diagram.createRecursiveRelation();
+        const recursiveLink = diagram.links.find(l => l.recursive)!;
+        diagram.toggleTotalParticipation(recursiveLink);
+
+        const snapshot = diagram.getStateSnapshot();
+        diagram.loadConfig(snapshot);
+
+        const reloaded = diagram.links.find(l =>
+            endpointId(l.source) === entityId && l.recursive && l.recursiveSide === recursiveLink.recursiveSide
+        )!;
+        expect(reloaded.totalParticipation).toBe(true);
+        expect(reloaded.recursive).toBe(true);
+    });
 });
 
 describe("ERDiagram geometry helpers", () => {

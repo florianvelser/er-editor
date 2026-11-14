@@ -95,6 +95,7 @@ describe("ExportModal", () => {
             format: "svg",
             scale: 2,
             transparent: true,
+            quality: 0.92,
         });
     });
 

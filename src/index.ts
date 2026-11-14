@@ -91,10 +91,10 @@ exportButton.addEventListener("click", function () {
                         er_diagram.renderImage('png', 1, opts.scale, opts.transparent);
                         break;
                     case 'jpeg':
-                        er_diagram.renderImage('jpeg', 1, opts.scale, false);
+                        er_diagram.renderImage('jpeg', opts.quality, opts.scale, false);
                         break;
                     case 'webp':
-                        er_diagram.renderImage('webp', 1, opts.scale, opts.transparent);
+                        er_diagram.renderImage('webp', opts.quality, opts.scale, opts.transparent);
                         break;
                     case 'svg':
                         er_diagram.renderSVG();

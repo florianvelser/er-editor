@@ -23,10 +23,13 @@ export class Contextmenu {
         this.hide();
         this.node = node;
         const isAttribute = node.type === "attribute";
+        const isEntity = node.type === "entity";
         const primaryBtn = document.getElementById("set-primary-key")!;
         const addBtn = document.getElementById("add-attribute-button")!;
+        const recursiveBtn = document.getElementById("add-recursive-relation-button")!;
         primaryBtn.style.display = isAttribute ? "block" : "none";
         addBtn.style.display = isAttribute ? "none" : "block";
+        recursiveBtn.style.display = isEntity ? "block" : "none";
 
         this.contextnode = node;
         const menu = this.element;
