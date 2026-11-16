@@ -245,6 +245,116 @@ describe("ERDiagram context-menu driven operations", () => {
     });
 });
 
+describe("ERDiagram weak entities, identifying relationships and partial keys", () => {
+    const entityId = "14a380cc-d050-4f01-be12-b0c46351f11a";
+    const relationId = "ea2ecc23-07e9-46a5-8e6b-9e91db0d78ad";
+    const attrId = "a361fa2e-b497-4e7b-90bc-ba0d4689a0cc";
+    const otherAttrId = "c3c2da63-5a45-43b1-9520-8bd7f8383392";
+
+    it("toggleWeakEntity renders a double rectangle and is undoable", () => {
+        const diagram = createDiagram();
+        const entity = diagram.nodes.find(n => n.id === entityId)!;
+        expect(entity.selection.select("rect.shape-inner").empty()).toBe(true);
+
+        diagram.contextmenuhandler.show(entity);
+        diagram.toggleWeakEntity();
+        expect(entity.weak).toBe(true);
+        expect(entity.selection.select("rect.shape-inner").empty()).toBe(false);
+
+        diagram.undo();
+        const restored = diagram.nodes.find(n => n.id === entityId)!;
+        expect(restored.weak).toBeFalsy();
+    });
+
+    it("toggleIdentifyingRelationship renders a double diamond", () => {
+        const diagram = createDiagram();
+        const relation = diagram.nodes.find(n => n.id === relationId)!;
+
+        diagram.contextmenuhandler.show(relation);
+        diagram.toggleIdentifyingRelationship();
+        expect(relation.identifying).toBe(true);
+        expect(relation.selection.selectAll("polygon").size()).toBe(2);
+
+        diagram.contextmenuhandler.show(relation);
+        diagram.toggleIdentifyingRelationship();
+        expect(relation.identifying).toBe(false);
+        expect(relation.selection.selectAll("polygon").size()).toBe(1);
+    });
+
+    it("toggles only apply to the matching node type", () => {
+        const diagram = createDiagram();
+        const attr = diagram.nodes.find(n => n.id === attrId)!;
+        diagram.contextmenuhandler.show(attr);
+        diagram.toggleWeakEntity();
+        diagram.toggleIdentifyingRelationship();
+        expect(attr.weak).toBeFalsy();
+        expect(attr.identifying).toBeFalsy();
+
+        const entity = diagram.nodes.find(n => n.id === entityId)!;
+        diagram.contextmenuhandler.show(entity);
+        diagram.togglePartialKey();
+        expect(entity.partialKey).toBeFalsy();
+    });
+
+    it("partial keys may span several attributes and exclude the primary key", () => {
+        const diagram = createDiagram();
+        const attr = diagram.nodes.find(n => n.id === attrId)!;
+        const otherAttr = diagram.nodes.find(n => n.id === otherAttrId)!;
+
+        diagram.contextmenuhandler.show(attr);
+        diagram.setPrimaryKey();
+        expect(attr.primary).toBe(true);
+
+        diagram.contextmenuhandler.show(attr);
+        diagram.togglePartialKey();
+        expect(attr.partialKey).toBe(true);
+        expect(attr.primary).toBe(false);
+        expect(attr.labelDiv!.style("text-decoration")).toContain("dashed");
+
+        diagram.contextmenuhandler.show(otherAttr);
+        diagram.togglePartialKey();
+        expect(attr.partialKey).toBe(true);
+        expect(otherAttr.partialKey).toBe(true);
+
+        diagram.contextmenuhandler.show(attr);
+        diagram.setPrimaryKey();
+        expect(attr.primary).toBe(true);
+        expect(attr.partialKey).toBe(false);
+    });
+
+    it("context menu shows the matching toggle with a state-dependent label", () => {
+        const diagram = createDiagram();
+        const entity = diagram.nodes.find(n => n.id === entityId)!;
+        const weakBtn = document.getElementById("toggle-weak-entity")!;
+
+        diagram.contextmenuhandler.show(entity);
+        expect(weakBtn.style.display).toBe("block");
+        expect(document.getElementById("toggle-partial-key")!.style.display).toBe("none");
+        expect(document.getElementById("toggle-identifying-relation")!.style.display).toBe("none");
+        expect(weakBtn.textContent).toBe("Mark as weak entity");
+
+        diagram.toggleWeakEntity();
+        diagram.contextmenuhandler.show(entity);
+        expect(weakBtn.textContent).toBe("Mark as regular entity");
+    });
+
+    it("getStateSnapshot round-trips the weak / identifying / partial key flags", () => {
+        const diagram = createDiagram();
+        diagram.contextmenuhandler.show(diagram.nodes.find(n => n.id === entityId)!);
+        diagram.toggleWeakEntity();
+        diagram.contextmenuhandler.show(diagram.nodes.find(n => n.id === relationId)!);
+        diagram.toggleIdentifyingRelationship();
+        diagram.contextmenuhandler.show(diagram.nodes.find(n => n.id === attrId)!);
+        diagram.togglePartialKey();
+
+        diagram.loadConfig(diagram.getStateSnapshot());
+
+        expect(diagram.nodes.find(n => n.id === entityId)!.weak).toBe(true);
+        expect(diagram.nodes.find(n => n.id === relationId)!.identifying).toBe(true);
+        expect(diagram.nodes.find(n => n.id === attrId)!.partialKey).toBe(true);
+    });
+});
+
 describe("ERDiagram geometry helpers", () => {
     it("computeAnchor places the anchor on the entity's rectangular border towards the other node", () => {
         const diagram = createDiagram();

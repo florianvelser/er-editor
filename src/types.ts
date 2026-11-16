@@ -10,6 +10,13 @@ export interface ERNodeConfig {
   height?: number;
   rx?: number;
   primary?: boolean;
+  // Attribute only: part of the partial key (discriminator) of a weak entity;
+  // rendered with a dashed underline.
+  partialKey?: boolean;
+  // Entity only: weak entity (no own key); rendered as a double rectangle.
+  weak?: boolean;
+  // Relationship only: identifying relationship of a weak entity; rendered as a double diamond.
+  identifying?: boolean;
   vx?: number;
   vy?: number;
 }
@@ -24,6 +31,13 @@ export interface SerializedNode {
   x: number;
   y: number;
   primary?: boolean;
+  // Attribute only: part of the partial key (discriminator) of a weak entity;
+  // rendered with a dashed underline.
+  partialKey?: boolean;
+  // Entity only: weak entity (no own key); rendered as a double rectangle.
+  weak?: boolean;
+  // Relationship only: identifying relationship of a weak entity; rendered as a double diamond.
+  identifying?: boolean;
 }
 
 export interface SerializedLink {

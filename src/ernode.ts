@@ -4,6 +4,32 @@ import type { ERNodeConfig, NodeType } from "./types";
 
 const SCALE_ANIMATION_DURATION = 200;
 
+// Double-border notation (weak entity / identifying relationship): both the
+// outer and the inset inner outline get a stroke so the "double frame" is
+// visible on top of the filled shape.
+const DOUBLE_BORDER_INSET = 6;
+const DOUBLE_BORDER_STROKE_WIDTH = 1.5;
+const ENTITY_BORDER_COLOR = "#8a6d00";
+const RELATIONSHIP_BORDER_COLOR = "#4f8a4f";
+const RELATIONSHIP_HEIGHT = 80;
+
+/** Points of a diamond centred at the origin. */
+function diamondPoints(halfW: number, halfH: number): string {
+    return `0,${-halfH} ${halfW},0 0,${halfH} ${-halfW},0`;
+}
+
+/**
+ * Half-extents of a diamond whose edges run parallel to the given diamond's
+ * edges at a perpendicular distance of `inset` towards the centre.
+ */
+function insetDiamond(halfW: number, halfH: number, inset: number): { halfW: number; halfH: number } {
+    const edge = Math.hypot(halfW, halfH);
+    return {
+        halfW: Math.max(0, halfW - inset * edge / halfH),
+        halfH: Math.max(0, halfH - inset * edge / halfW)
+    };
+}
+
 type NodeSelection = d3.Selection<SVGGElement, unknown, null, undefined>;
 type GenericSelection<GElement extends Element = Element> = d3.Selection<GElement, unknown, null, undefined>;
 
@@ -18,6 +44,9 @@ export class ERNode implements d3.SimulationNodeDatum {
     height?: number;
     rx?: number;
     primary?: boolean;
+    partialKey?: boolean;
+    weak?: boolean;
+    identifying?: boolean;
 
     index?: number;
     x?: number;
@@ -121,19 +150,47 @@ export class ERNode implements d3.SimulationNodeDatum {
     }
 
     renderEntity(selection: NodeSelection): void {
-        selection.append("rect")
+        const outer = selection.append("rect")
+            .attr("class", "shape")
             .attr("x", -60).attr("y", -30)
             .attr("width", 120).attr("height", 60)
             .attr("rx", 10).attr("ry", 10)
             .attr("fill", "#ffcc00");
+        if (this.weak) {
+            // Weak entity: double rectangle.
+            outer.attr("stroke", ENTITY_BORDER_COLOR).attr("stroke-width", DOUBLE_BORDER_STROKE_WIDTH);
+            selection.append("rect")
+                .attr("class", "shape-inner")
+                .attr("x", -60 + DOUBLE_BORDER_INSET).attr("y", -30 + DOUBLE_BORDER_INSET)
+                .attr("width", 120 - 2 * DOUBLE_BORDER_INSET).attr("height", 60 - 2 * DOUBLE_BORDER_INSET)
+                .attr("rx", 6).attr("ry", 6)
+                .attr("fill", "none")
+                .attr("stroke", ENTITY_BORDER_COLOR)
+                .attr("stroke-width", DOUBLE_BORDER_STROKE_WIDTH)
+                .style("pointer-events", "none");
+        }
     }
 
     renderRelationship(selection: NodeSelection): void {
         const defaultW = 80, defaultH = 40;
-        const points = `0,${-defaultH / 2} ${defaultW / 2},0 0,${defaultH / 2} ${-defaultW / 2},0`;
-        selection.append("polygon")
-            .attr("points", points)
+        const outer = selection.append("polygon")
+            .attr("class", "shape")
+            .attr("points", diamondPoints(defaultW / 2, defaultH / 2))
             .attr("fill", "#ccffcc");
+        if (this.identifying) {
+            // Identifying relationship: double diamond.
+            outer.attr("stroke", RELATIONSHIP_BORDER_COLOR).attr("stroke-width", DOUBLE_BORDER_STROKE_WIDTH)
+                .attr("stroke-linejoin", "round");
+            const inner = insetDiamond(defaultW / 2, defaultH / 2, DOUBLE_BORDER_INSET);
+            selection.append("polygon")
+                .attr("class", "shape-inner")
+                .attr("points", diamondPoints(inner.halfW, inner.halfH))
+                .attr("fill", "none")
+                .attr("stroke", RELATIONSHIP_BORDER_COLOR)
+                .attr("stroke-width", DOUBLE_BORDER_STROKE_WIDTH)
+                .attr("stroke-linejoin", "round")
+                .style("pointer-events", "none");
+        }
     }
 
     renderAttribute(selection: NodeSelection): void {
@@ -252,8 +309,13 @@ export class ERNode implements d3.SimulationNodeDatum {
 
         div.on("dblclick", event => this.enableEditing(event, div));
 
-        if (this.primary) {
-            div.style("text-decoration", "underline");
+        if (this.type === "attribute") {
+            if (this.primary) {
+                div.style("text-decoration", "underline");
+            } else if (this.partialKey) {
+                // Partial key (discriminator) of a weak entity: dashed underline.
+                div.style("text-decoration", "underline dashed");
+            }
         }
 
         this.labelDiv = div;
@@ -273,15 +335,15 @@ export class ERNode implements d3.SimulationNodeDatum {
     }
 
     highlight(): void {
-        this.selection.select("rect").attr("fill", "#e6b800");
+        this.selection.select("rect.shape").attr("fill", "#e6b800");
         this.selection.select("ellipse").attr("fill", "#5fbbe9");
-        this.selection.select("polygon").attr("fill", "#b3e0b3");
+        this.selection.select("polygon.shape").attr("fill", "#b3e0b3");
     }
 
     removeHighlight(): void {
-        this.selection.select("rect").attr("fill", "#ffcc00");
+        this.selection.select("rect.shape").attr("fill", "#ffcc00");
         this.selection.select("ellipse").attr("fill", "#66ccff");
-        this.selection.select("polygon").attr("fill", "#ccffcc");
+        this.selection.select("polygon.shape").attr("fill", "#ccffcc");
     }
 
     enableEditing(event?: Event, div?: d3.Selection<HTMLDivElement, unknown, null, undefined>): void {
@@ -377,9 +439,12 @@ export class ERNode implements d3.SimulationNodeDatum {
 
     adjustEntitySize<GElement extends Element>(selection: GenericSelection<GElement>, newWidth: number): void {
         const finalWidth = Math.max(120, newWidth);
-        selection.select("rect")
+        selection.select("rect.shape")
             .attr("width", finalWidth)
             .attr("x", -finalWidth / 2);
+        selection.select("rect.shape-inner")
+            .attr("width", finalWidth - 2 * DOUBLE_BORDER_INSET)
+            .attr("x", -finalWidth / 2 + DOUBLE_BORDER_INSET);
         this.width = finalWidth;
     }
 
@@ -392,10 +457,12 @@ export class ERNode implements d3.SimulationNodeDatum {
 
     adjustRelationshipSize<GElement extends Element>(selection: GenericSelection<GElement>, newWidth: number): void {
         const finalWidth = Math.max(80, newWidth) * 1.4;
-        const newHeight = 80;
-        const points = `0,${-newHeight / 2} ${finalWidth / 2},0 0,${newHeight / 2} ${-finalWidth / 2},0`;
-        selection.select("polygon")
-            .attr("points", points);
+        const newHeight = RELATIONSHIP_HEIGHT;
+        selection.select("polygon.shape")
+            .attr("points", diamondPoints(finalWidth / 2, newHeight / 2));
+        const inner = insetDiamond(finalWidth / 2, newHeight / 2, DOUBLE_BORDER_INSET);
+        selection.select("polygon.shape-inner")
+            .attr("points", diamondPoints(inner.halfW, inner.halfH));
         this.width = finalWidth;
         this.height = newHeight;
     }
