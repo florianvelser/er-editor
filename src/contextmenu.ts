@@ -31,6 +31,17 @@ export class Contextmenu {
         addBtn.style.display = isAttribute ? "none" : "block";
         recursiveBtn.style.display = isEntity ? "block" : "none";
 
+        const isRelationship = node.type === "relationship";
+        const partialKeyBtn = document.getElementById("toggle-partial-key")!;
+        const weakBtn = document.getElementById("toggle-weak-entity")!;
+        const identifyingBtn = document.getElementById("toggle-identifying-relation")!;
+        partialKeyBtn.style.display = isAttribute ? "block" : "none";
+        weakBtn.style.display = isEntity ? "block" : "none";
+        identifyingBtn.style.display = isRelationship ? "block" : "none";
+        partialKeyBtn.textContent = node.partialKey ? "Remove partial key" : "Set as partial key";
+        weakBtn.textContent = node.weak ? "Mark as regular entity" : "Mark as weak entity";
+        identifyingBtn.textContent = node.identifying ? "Mark as regular relation" : "Mark as identifying relation";
+
         this.contextnode = node;
         const menu = this.element;
         menu.style.display = "block";

@@ -274,7 +274,10 @@ export class ERDiagram implements DiagramLike {
                 width: item.width,
                 x: item.x as number,
                 y: item.y as number,
-                primary: item.primary
+                primary: item.primary,
+                partialKey: item.partialKey,
+                weak: item.weak,
+                identifying: item.identifying
             })),
             "links": this.links.map(item => ({
                 source: endpointId(item.source) as string,
@@ -983,10 +986,44 @@ export class ERDiagram implements DiagramLike {
                     n.primary = n.id === attributeNode.id;
                 }
             });
+            // An attribute is either (part of) the primary key or of the partial key.
+            attributeNode.partialKey = false;
             this.nodes.forEach(n => {
                 n.render(n.selection);
             });
         }
+    }
+
+    /**
+     * Toggles whether the context attribute belongs to the partial key
+     * (discriminator) of a weak entity. Unlike the primary key, a partial key may
+     * span several attributes, so other attributes are left untouched.
+     */
+    togglePartialKey(): void {
+        const attributeNode = this.contextmenuhandler.getContextNode();
+        if (!attributeNode || attributeNode.type !== "attribute") return;
+        this.historyManager.save(this.getStateSnapshot());
+        attributeNode.partialKey = !attributeNode.partialKey;
+        if (attributeNode.partialKey) attributeNode.primary = false;
+        attributeNode.render(attributeNode.selection);
+    }
+
+    /** Toggles the context entity between a regular and a weak entity. */
+    toggleWeakEntity(): void {
+        const entityNode = this.contextmenuhandler.getContextNode();
+        if (!entityNode || entityNode.type !== "entity") return;
+        this.historyManager.save(this.getStateSnapshot());
+        entityNode.weak = !entityNode.weak;
+        entityNode.render(entityNode.selection);
+    }
+
+    /** Toggles the context relationship between a regular and an identifying relationship. */
+    toggleIdentifyingRelationship(): void {
+        const relationNode = this.contextmenuhandler.getContextNode();
+        if (!relationNode || relationNode.type !== "relationship") return;
+        this.historyManager.save(this.getStateSnapshot());
+        relationNode.identifying = !relationNode.identifying;
+        relationNode.render(relationNode.selection);
     }
 
     addContextMenuButtonListener(): void {
@@ -1008,6 +1045,21 @@ export class ERDiagram implements DiagramLike {
         document.getElementById("set-primary-key")!.addEventListener('click', () => {
             this.contextmenuhandler.hide();
             this.setPrimaryKey();
+        });
+
+        document.getElementById("toggle-partial-key")!.addEventListener('click', () => {
+            this.contextmenuhandler.hide();
+            this.togglePartialKey();
+        });
+
+        document.getElementById("toggle-weak-entity")!.addEventListener('click', () => {
+            this.contextmenuhandler.hide();
+            this.toggleWeakEntity();
+        });
+
+        document.getElementById("toggle-identifying-relation")!.addEventListener('click', () => {
+            this.contextmenuhandler.hide();
+            this.toggleIdentifyingRelationship();
         });
     }
 

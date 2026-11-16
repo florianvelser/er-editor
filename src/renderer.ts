@@ -229,6 +229,8 @@ export class ERDiagramImageRenderer {
             const fontSize = Number(style.match(/font-size:\s*(\d+)px/)?.[1] || 12) * 1;
             const fill = style.match(/color:\s*(#[0-9A-Fa-f]{3,6})/)?.[1] || "#000";
             const underline = /text-decoration\s*:\s*underline/.test(style);
+            // Partial keys use a dashed underline (text-decoration: underline dashed).
+            const dashedUnderline = underline && /text-decoration\s*:[^;]*dashed/.test(style);
 
             // Vertikale Mitte + descent-Korrektur
             const cy = y + h / 2 + fontSize * 0.35;
@@ -262,6 +264,9 @@ export class ERDiagramImageRenderer {
                 lineEl.setAttribute("y2", String(underlineY));
                 lineEl.setAttribute("stroke", fill);
                 lineEl.setAttribute("stroke-width", String(Math.max(1, fontSize * 0.07))); // dynamisch
+                if (dashedUnderline) {
+                    lineEl.setAttribute("stroke-dasharray", `${fontSize * 0.3} ${fontSize * 0.2}`);
+                }
                 groupEl.appendChild(lineEl);
             }
 
